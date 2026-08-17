@@ -1,0 +1,27 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { toolCatalog } from "../lib/tool-catalog.ts";
+
+test("catalog has unique slugs and meaningful SEO copy", () => {
+  assert.ok(toolCatalog.length >= 12);
+  assert.equal(new Set(toolCatalog.map((tool) => tool.slug)).size, toolCatalog.length);
+  for (const tool of toolCatalog) {
+    assert.match(tool.slug, /^[a-z0-9-]+$/);
+    assert.ok(tool.description.length >= 20);
+  }
+});
+
+test("layout declares a restrictive local-first CSP", async () => {
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  assert.match(layout, /connect-src 'none'/);
+  assert.match(layout, /object-src 'none'/);
+  assert.match(layout, /form-action 'self'/);
+  assert.doesNotMatch(layout, /https:\/\/fonts\./);
+});
+
+test("GitHub Pages workflow runs the full quality gate", async () => {
+  const workflow = await readFile(new URL("../.github/workflows/deploy-pages.yml", import.meta.url), "utf8");
+  assert.match(workflow, /npm run check/);
+  assert.match(workflow, /actions\/deploy-pages@v4/);
+});
