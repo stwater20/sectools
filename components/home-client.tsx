@@ -42,10 +42,10 @@ function ToolCard({
           <span>{tool.category}</span>
           {tool.status && <span className={`status status--${tool.status}`}>{tool.status === "new" ? "NEW" : "熱門"}</span>}
         </div>
-        <h3><Link href={`/tools/${tool.slug}/`} onClick={onOpen}>{tool.name}</Link></h3>
+        <h3><Link href={`/${tool.slug}/`} onClick={onOpen}>{tool.name}</Link></h3>
         <p>{tool.description}</p>
       </div>
-      <Link className="tool-card__launch" href={`/tools/${tool.slug}/`} onClick={onOpen}>
+      <Link className="tool-card__launch" href={`/${tool.slug}/`} onClick={onOpen}>
         開啟工具 <span aria-hidden="true">↗</span>
       </Link>
     </article>
@@ -119,7 +119,7 @@ export function HomeClient({ tools }: { tools: ToolDefinition[] }) {
           <div className="container hero__inner">
             <div className="eyebrow"><span /> SECTOOLS.TW OPEN TOOLKIT · 2026</div>
             <h1>真正能用的<br /><em>資安工具箱。</em></h1>
-            <p className="hero__lead">為資安工程師、SOC 分析師與開發者打造。免登入、零追蹤，所有資料只在你的瀏覽器裡處理。</p>
+            <p className="hero__lead">為資安工程師、SOC 分析師與開發者打造。免登入、不上傳工具輸入，所有運算都在你的瀏覽器裡完成。</p>
             <div className="hero-search">
               <span className="hero-search__icon" aria-hidden="true">⌕</span>
               <label className="sr-only" htmlFor="tool-search">搜尋資安工具</label>
@@ -137,7 +137,7 @@ export function HomeClient({ tools }: { tools: ToolDefinition[] }) {
             <div className="hero__trust">
               <span><i className="pulse-dot" /> 本機運算</span>
               <span>無廣告</span>
-              <span>無 Cookie 追蹤</span>
+              <span>不傳送工具輸入</span>
               <span>開放原始碼</span>
             </div>
           </div>
@@ -169,7 +169,7 @@ export function HomeClient({ tools }: { tools: ToolDefinition[] }) {
           {recentTools.length > 0 && !query && category === "全部" && (
             <div className="recent-strip" aria-label="最近使用">
               <span>最近使用</span>
-              {recentTools.map((tool) => <Link key={tool.slug} href={`/tools/${tool.slug}/`}>{tool.name}</Link>)}
+              {recentTools.map((tool) => <Link key={tool.slug} href={`/${tool.slug}/`}>{tool.name}</Link>)}
             </div>
           )}
 

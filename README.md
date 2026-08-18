@@ -44,21 +44,22 @@ Repo 已包含 `.github/workflows/deploy-pages.yml`。推送到 `main` 後：
 
 ## 安全模型
 
-- `connect-src 'none'`：成品頁面不允許對外發送 fetch / XHR / WebSocket。
-- 不使用第三方 CDN、字型、追蹤器或遠端腳本。
+- Repo 原始碼不使用第三方 CDN、字型、追蹤器或遠端腳本；Cloudflare edge 功能若注入額外腳本，需在 Cloudflare 端另行治理。
 - 使用 Web Crypto API 處理 Hash、HMAC 與密碼學安全亂數。
 - 所有輸入限制為 2 MB，避免意外貼入大型資料造成瀏覽器卡住。
 - 不使用 `innerHTML` 呈現使用者輸入；結果一律當作純文字。
 - 收藏與最近使用只存工具 slug，不保存工具輸入或結果。
 
-GitHub Pages 無法自訂 HTTP response headers，因此 CSP 以 `<meta http-equiv>` 提供；`frame-ancestors`、HSTS、Permissions-Policy 等必須由自訂網域前方的 CDN / reverse proxy 設定。若正式站點經 Cloudflare 代理，建議再加入：
+GitHub Pages 無法自訂 HTTP response headers。請在自訂網域前方的 Cloudflare / reverse proxy 設定 CSP、HSTS、Permissions-Policy 等 response headers；不要使用 HTML `<meta http-equiv="Content-Security-Policy">`，Cloudflare 的自動 nonce／分析功能可能改寫該標籤並阻止 Next.js hydration。建議加入：
 
 ```text
 Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-Content-Security-Policy: default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
 X-Content-Type-Options: nosniff
 ```
+
+Cloudflare 端也應關閉 Zaraz 與 Web Analytics 自動注入，避免加入未由 repo 管理的追蹤腳本，並在每次部署後以真實瀏覽器驗證至少一個互動工具。
 
 ## 新增工具
 

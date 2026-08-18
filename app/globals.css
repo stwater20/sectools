@@ -337,6 +337,9 @@ kbd { border: 1px solid #d7d9d8; border-bottom-width: 2px; border-radius: 4px; p
 .related-grid strong { font-size: 13px; }
 .related-grid small { color: var(--muted); font-size: 9px; }
 .related-grid b { color: var(--orange); }
+.legacy-redirect { width: min(620px, calc(100% - 40px)); margin: 100px auto; padding: 40px; background: var(--white); border: 1px solid var(--line-dark); text-align: center; }
+.legacy-redirect h1 { margin: 0 0 12px; }
+.legacy-redirect p { color: var(--muted); margin: 0 0 24px; }
 
 @media (max-width: 900px) {
   .tool-grid { grid-template-columns: repeat(2, 1fr); }

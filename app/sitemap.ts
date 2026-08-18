@@ -8,7 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: siteUrl, changeFrequency: "weekly", priority: 1 },
     ...toolCatalog.map((tool) => ({
-      url: `${siteUrl}/tools/${tool.slug}/`,
+      url: `${siteUrl}/${tool.slug}/`,
       changeFrequency: "monthly" as const,
       priority: tool.featured ? 0.8 : 0.7,
     })),
