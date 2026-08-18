@@ -3,16 +3,21 @@ import test from "node:test";
 import {
   analyzeEmailHeaders,
   analyzeSecurityHeaders,
+  analyzeUrlRisk,
   base64ToUtf8,
   calculateCidr,
+  calculateChmod,
   calculateCvss,
   calculateEntropy,
   decodeTimestamp,
   defang,
   extractIocs,
   extractPrintableStrings,
+  formatHexView,
+  identifyHash,
   identifyFileSignature,
   refang,
+  scanSecrets,
   utf8ToBase64,
 } from "../lib/tool-utils.ts";
 
@@ -99,4 +104,36 @@ test("string extractor finds printable sequences", () => {
 test("timestamp decoder handles Unix and Windows FILETIME", () => {
   assert.equal(decodeTimestamp("0", "unix-seconds").toISOString(), "1970-01-01T00:00:00.000Z");
   assert.equal(decodeTimestamp("116444736000000000", "filetime").toISOString(), "1970-01-01T00:00:00.000Z");
+});
+
+test("secret scanner masks findings and reports source lines", () => {
+  const findings = scanSecrets("safe=true\nAWS_KEY=AKIA1234567890ABCDEF");
+  assert.equal(findings[0].type, "AWS Access Key");
+  assert.equal(findings[0].line, 2);
+  assert.doesNotMatch(findings[0].preview, /AKIA1234567890ABCDEF/);
+});
+
+test("hash identifier returns ambiguous candidates for 32 hex chars", () => {
+  const result = identifyHash("5d41402abc4b2a76b9719d911017c592");
+  assert.ok(result.candidates.some((candidate) => candidate.name === "MD5"));
+  assert.ok(result.candidates.some((candidate) => candidate.name === "NTLM"));
+});
+
+test("hex viewer formats offsets, bytes, and ASCII", () => {
+  const result = formatHexView(new Uint8Array([0x41, 0x42, 0x00]));
+  assert.match(result.text, /^00000000  41 42 00/);
+  assert.match(result.text, /\|AB\.\|$/);
+});
+
+test("URL analyzer flags embedded credentials and insecure transport", () => {
+  const result = analyzeUrlRisk("http://trusted.example@evil.com/login");
+  assert.equal(result.hostname, "evil.com");
+  assert.ok(result.flags.some((flag) => flag.label.includes("帳號或密碼")));
+  assert.ok(result.flags.some((flag) => flag.label.includes("HTTPS")));
+});
+
+test("chmod calculator renders symbolic permissions and flags SUID", () => {
+  const result = calculateChmod("4755");
+  assert.equal(result.symbolic, "rwsr-xr-x");
+  assert.ok(result.warnings.some((warning) => warning.includes("SUID")));
 });

@@ -10,6 +10,7 @@
 - 網路與風險：IPv4 CIDR Calculator、CVSS v3.1 Calculator
 - 網站與郵件：Security Headers Analyzer、Email Header Analyzer
 - 鑑識與分析：File Signature Checker、String Extractor、Forensic Timestamp Decoder
+- 進階分析：Secret Scanner、Hash Identifier、Hex Viewer、Suspicious URL Analyzer、chmod Calculator
 
 每個工具都有獨立靜態網址、SEO metadata、結構化資料與安全使用提醒。
 

@@ -316,3 +316,88 @@ export function decodeTimestamp(value: string, format: TimestampFormat) {
   if (!Number.isFinite(numeric) || Number.isNaN(date.getTime())) throw new Error("時間戳超出可解析範圍。 ");
   return date;
 }
+
+export function scanSecrets(value: string) {
+  assertSafeInput(value);
+  const patterns = [
+    { type: "Private Key", regex: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g },
+    { type: "AWS Access Key", regex: /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g },
+    { type: "GitHub Token", regex: /\bgh[pousr]_[A-Za-z0-9]{20,255}\b/g },
+    { type: "JWT", regex: /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g },
+    { type: "Slack Token", regex: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g },
+    { type: "Google API Key", regex: /\bAIza[A-Za-z0-9_-]{30,}\b/g },
+    { type: "Generic Secret Assignment", regex: /\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*["']?([A-Za-z0-9_\-/.+=]{16,})["']?/gi },
+  ];
+  const findings: Array<{ type: string; line: number; preview: string }> = [];
+  for (const pattern of patterns) {
+    for (const match of value.matchAll(pattern.regex)) {
+      const raw = match[1] ?? match[0];
+      const index = match.index ?? 0;
+      const line = value.slice(0, index).split("\n").length;
+      const preview = raw.length > 16 ? `${raw.slice(0, 7)}…${raw.slice(-4)}` : raw;
+      findings.push({ type: pattern.type, line, preview });
+    }
+  }
+  return findings.filter((finding, index) => findings.findIndex((item) => item.type === finding.type && item.line === finding.line && item.preview === finding.preview) === index);
+}
+
+export function identifyHash(value: string) {
+  const hash = value.trim();
+  const candidates: Array<{ name: string; confidence: "high" | "possible"; note: string }> = [];
+  if (/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(hash)) candidates.push({ name: "bcrypt", confidence: "high", note: "Modular crypt format $2a/$2b/$2y" });
+  if (/^\$argon2(?:id|i|d)\$/.test(hash)) candidates.push({ name: "Argon2", confidence: "high", note: "Argon2 encoded hash" });
+  if (/^\$[156]\$/.test(hash)) candidates.push({ name: hash.startsWith("$1$") ? "md5crypt" : hash.startsWith("$5$") ? "sha256crypt" : "sha512crypt", confidence: "high", note: "Unix crypt format" });
+  if (/^[a-f0-9]+$/i.test(hash)) {
+    const byLength: Record<number, string[]> = { 32: ["MD5", "NTLM", "MD4"], 40: ["SHA-1", "RIPEMD-160"], 56: ["SHA-224"], 64: ["SHA-256", "BLAKE2s"], 96: ["SHA-384"], 128: ["SHA-512", "BLAKE2b"] };
+    for (const name of byLength[hash.length] ?? []) candidates.push({ name, confidence: "possible", note: `${hash.length} 個十六進位字元，僅憑格式無法唯一確認` });
+  }
+  if (/^[A-F0-9]{16}:[A-F0-9]{32}$/i.test(hash)) candidates.push({ name: "LM:NTLM pair", confidence: "possible", note: "常見 Windows dump 格式" });
+  return { candidates, length: hash.length, characterSet: /^[a-f0-9]+$/i.test(hash) ? "hexadecimal" : /^[A-Za-z0-9+/=]+$/.test(hash) ? "base64-like" : "mixed" };
+}
+
+export function formatHexView(bytes: Uint8Array, limit = 65_536) {
+  const lines: string[] = [];
+  const slice = bytes.slice(0, limit);
+  for (let offset = 0; offset < slice.length; offset += 16) {
+    const chunk = slice.slice(offset, offset + 16);
+    const hex = Array.from(chunk, (byte) => byte.toString(16).padStart(2, "0")).join(" ").padEnd(47, " ");
+    const ascii = Array.from(chunk, (byte) => byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : ".").join("");
+    lines.push(`${offset.toString(16).padStart(8, "0")}  ${hex}  |${ascii}|`);
+  }
+  return { text: lines.join("\n"), shownBytes: slice.length, truncated: bytes.length > limit };
+}
+
+export function analyzeUrlRisk(value: string) {
+  const raw = value.trim();
+  assertSafeInput(raw);
+  const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`);
+  const flags: Array<{ level: "warn" | "danger"; label: string }> = [];
+  if (url.username || url.password) flags.push({ level: "danger", label: "URL 內含帳號或密碼，可能用來混淆真正 Host。" });
+  if (url.hostname.includes("xn--")) flags.push({ level: "warn", label: "Host 使用 Punycode，請確認是否為同形字攻擊。" });
+  const host = url.hostname.replace(/^\[|\]$/g, "");
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(host) || host.includes(":")) flags.push({ level: "warn", label: "Host 直接使用 IP 位址。" });
+  if (url.port && !["80", "443"].includes(url.port)) flags.push({ level: "warn", label: `使用非標準 Port ${url.port}。` });
+  if (raw.length > 160) flags.push({ level: "warn", label: "URL 非常長，可能刻意隱藏重要片段。" });
+  if ((raw.match(/%[0-9a-f]{2}/gi) ?? []).length >= 5) flags.push({ level: "warn", label: "包含大量百分比編碼。" });
+  if (url.protocol !== "https:") flags.push({ level: "warn", label: `使用 ${url.protocol}，未受到 HTTPS 傳輸保護。` });
+  return { normalized: url.href, protocol: url.protocol, hostname: url.hostname, port: url.port || "預設", pathname: url.pathname, queryCount: [...url.searchParams].length, fragment: url.hash || "—", flags };
+}
+
+export function calculateChmod(mode: string) {
+  const normalized = mode.trim().replace(/^0/, "");
+  if (!/^[0-7]{3,4}$/.test(normalized)) throw new Error("請輸入 3 或 4 位八進位權限，例如 755 或 4755。 ");
+  const special = normalized.length === 4 ? Number(normalized[0]) : 0;
+  const digits = normalized.length === 4 ? normalized.slice(1) : normalized;
+  const triplets = digits.split("").map((digit) => {
+    const value = Number(digit);
+    return `${value & 4 ? "r" : "-"}${value & 2 ? "w" : "-"}${value & 1 ? "x" : "-"}`;
+  });
+  if (special & 4) triplets[0] = `${triplets[0].slice(0, 2)}${triplets[0][2] === "x" ? "s" : "S"}`;
+  if (special & 2) triplets[1] = `${triplets[1].slice(0, 2)}${triplets[1][2] === "x" ? "s" : "S"}`;
+  if (special & 1) triplets[2] = `${triplets[2].slice(0, 2)}${triplets[2][2] === "x" ? "t" : "T"}`;
+  const warnings: string[] = [];
+  if (Number(digits[2]) & 2) warnings.push("Others 具有寫入權限（world-writable）。");
+  if (special & 4) warnings.push("已設定 SUID，程式可能以擁有者權限執行。");
+  if (special & 2) warnings.push("已設定 SGID，程式可能以群組權限執行。");
+  return { symbolic: triplets.join(""), normalized: `${special ? special : ""}${digits}`, warnings };
+}

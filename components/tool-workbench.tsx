@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   analyzeEmailHeaders,
   analyzeSecurityHeaders,
+  analyzeUrlRisk,
   assertSafeInput,
   base64ToUtf8,
   bytesToBase64,
@@ -11,14 +12,18 @@ import {
   calculateCidr,
   calculateCvss,
   calculateEntropy,
+  calculateChmod,
   decodeJwtPart,
   decodeTimestamp,
   defang,
   estimatePassword,
   extractIocs,
   extractPrintableStrings,
+  formatHexView,
+  identifyHash,
   identifyFileSignature,
   refang,
+  scanSecrets,
   utf8ToBase64,
   type CvssMetrics,
   type TimestampFormat,
@@ -278,6 +283,47 @@ function TimestampTool() {
   return <div className="single-workbench"><div className="workbench-grid"><label className="field"><span>時間戳整數</span><input value={value} onChange={(event) => setValue(event.target.value)} placeholder="例如 1723948800" inputMode="numeric" /></label><label className="field"><span>格式</span><select value={format} onChange={(event) => setFormat(event.target.value as TimestampFormat)}>{Object.entries(labels).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label></div><button className="primary-button" type="button" onClick={run}>解碼時間</button><ErrorNotice message={error} />{date && <div className="timestamp-results"><div><span>ISO 8601 / UTC</span><code>{date.toISOString()}</code></div><div><span>台北時間 Asia/Taipei</span><code>{date.toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}</code></div><div><span>瀏覽器本地時間</span><code>{date.toString()}</code></div></div>}</div>;
 }
 
+function SecretScannerTool() {
+  const [input, setInput] = useState("");
+  const findings = useMemo(() => input ? scanSecrets(input) : [], [input]);
+  return <div className="single-workbench"><div className="warning-banner"><strong>內容只在目前分頁掃描</strong><span>結果預設遮罩，不會把完整 Secret 寫入 DOM、剪貼簿或儲存空間。</span></div><TextArea label="程式碼、設定檔或 Log" value={input} onChange={setInput} placeholder="貼上要檢查的內容…" rows={14} />{input && <div className={`secret-report ${findings.length ? "has-findings" : ""}`}><div><strong>{findings.length ? `找到 ${findings.length} 個疑似敏感資訊` : "未發現已知 Secret 格式"}</strong><span>仍需搭配人工檢查，掃描器無法涵蓋自訂憑證格式。</span></div>{findings.length > 0 && <ol>{findings.map((finding,index) => <li key={`${finding.type}-${finding.line}-${index}`}><span>L{finding.line}</span><strong>{finding.type}</strong><code>{finding.preview}</code></li>)}</ol>}</div>}</div>;
+}
+
+function HashIdentifierTool() {
+  const [input, setInput] = useState("");
+  const result = useMemo(() => identifyHash(input), [input]);
+  return <div className="single-workbench"><label className="field"><span>Hash 或 encoded hash</span><input value={input} onChange={(event) => setInput(event.target.value)} placeholder="$2b$12$… 或 5d41402abc4b2a76b9719d911017c592" spellCheck={false} /></label>{input && <div className="hash-id-report"><div className="results-line"><strong>{result.length}</strong> 個字元 <span>· {result.characterSet}</span></div>{result.candidates.length ? <div className="candidate-list">{result.candidates.map((candidate) => <div key={candidate.name}><span className={`status status--${candidate.confidence === "high" ? "popular" : "new"}`}>{candidate.confidence === "high" ? "高信心" : "候選"}</span><strong>{candidate.name}</strong><p>{candidate.note}</p></div>)}</div> : <div className="empty-inline">沒有符合目前資料庫的常見 Hash 格式。</div>}</div>}</div>;
+}
+
+function HexViewerTool() {
+  const [result, setResult] = useState<{ name: string; text: string; shownBytes: number; truncated: boolean } | null>(null);
+  const [error, setError] = useState("");
+  async function inspect(file: File) {
+    try {
+      if (file.size > 10_000_000) throw new Error("檔案超過 10 MB 上限。 ");
+      const view = formatHexView(new Uint8Array(await file.arrayBuffer()));
+      setResult({ name: file.name, ...view }); setError("");
+    } catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "檔案讀取失敗。 "); }
+  }
+  return <div className="single-workbench"><FileDropField onFile={inspect} /><ErrorNotice message={error} />{result && <div className="hex-report"><div><strong>{result.name}</strong><span>顯示 {result.shownBytes.toLocaleString()} bytes{result.truncated ? " · 已截取前 64 KB" : ""}</span><CopyButton value={result.text} label="複製 Hex dump" /></div><pre>{result.text}</pre></div>}</div>;
+}
+
+function UrlRiskTool() {
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState<ReturnType<typeof analyzeUrlRisk> | null>(null);
+  const [error, setError] = useState("");
+  function run() { try { setResult(analyzeUrlRisk(input)); setError(""); } catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "URL 格式錯誤。 "); } }
+  return <div className="single-workbench"><label className="field"><span>可疑 URL</span><input value={input} onChange={(event) => setInput(event.target.value)} placeholder="https://account.example@evil.test/login" spellCheck={false} /></label><button className="primary-button" type="button" onClick={run}>拆解 URL</button><ErrorNotice message={error} />{result && <div className="url-report">{result.flags.length ? <div className="warning-list"><strong>{result.flags.length} 個注意事項</strong><ul>{result.flags.map((flag) => <li key={flag.label}>{flag.label}</li>)}</ul></div> : <div className="file-verdict"><span>初步結果</span><strong>未發現目前規則涵蓋的明顯混淆特徵</strong></div>}<div className="email-summary">{Object.entries({ normalized: result.normalized, protocol: result.protocol, hostname: result.hostname, port: result.port, pathname: result.pathname, queryCount: result.queryCount, fragment: result.fragment }).map(([key,value]) => <div key={key}><span>{key}</span><code>{String(value)}</code></div>)}</div></div>}</div>;
+}
+
+function ChmodTool() {
+  const [mode, setMode] = useState("755");
+  const [error, setError] = useState("");
+  const result = useMemo(() => { try { return calculateChmod(mode); } catch { return null; } }, [mode]);
+  function validate() { try { calculateChmod(mode); setError(""); } catch (cause) { setError(cause instanceof Error ? cause.message : "權限格式錯誤。 "); } }
+  return <div className="single-workbench"><label className="field field--short"><span>八進位權限</span><input value={mode} onChange={(event) => setMode(event.target.value)} onBlur={validate} placeholder="755" inputMode="numeric" /></label><ErrorNotice message={error} />{result && <div className="chmod-report"><div className="chmod-symbol"><strong>{result.symbolic}</strong><span>chmod {result.normalized}</span></div><div className="permission-grid">{["OWNER", "GROUP", "OTHERS"].map((label,index) => <div key={label}><span>{label}</span><code>{result.symbolic.slice(index * 3, index * 3 + 3)}</code></div>)}</div>{result.warnings.length ? <div className="warning-list"><strong>安全提醒</strong><ul>{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div> : <p className="safe-note">目前沒有 world-writable、SUID 或 SGID 警訊。</p>}</div>}</div>;
+}
+
 export function ToolWorkbench({ slug }: { slug: string }) {
   switch (slug) {
     case "base64-codec": return <CodecTool mode="base64" />;
@@ -298,6 +344,11 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "file-signature-checker": return <FileSignatureTool />;
     case "string-extractor": return <StringExtractorTool />;
     case "timestamp-decoder": return <TimestampTool />;
+    case "secret-scanner": return <SecretScannerTool />;
+    case "hash-identifier": return <HashIdentifierTool />;
+    case "hex-viewer": return <HexViewerTool />;
+    case "url-risk-analyzer": return <UrlRiskTool />;
+    case "chmod-calculator": return <ChmodTool />;
     default: return null;
   }
 }
