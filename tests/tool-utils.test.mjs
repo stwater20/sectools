@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   analyzeEmailHeaders,
+  analyzeIpAddress,
   analyzeSecurityHeaders,
   analyzeUrlRisk,
   asciiToNumbers,
@@ -14,9 +15,11 @@ import {
   calculateCvss,
   calculateEntropy,
   decodeTimestamp,
+  decodeEscapedText,
   defang,
   extractIocs,
   extractPrintableStrings,
+  encodeEscapedText,
   formatHexView,
   identifyHash,
   identifyFileSignature,
@@ -26,6 +29,8 @@ import {
   unpackInteger,
   xorTransform,
   gcdBigInt,
+  generateHotp,
+  generateTotp,
   modInverse,
   powMod,
   utf8ToBase64,
@@ -173,4 +178,44 @@ test("RSA helpers calculate gcd, inverse, and modular exponent", () => {
   assert.equal(gcdBigInt(48n, 18n), 6n);
   assert.equal(modInverse(3n, 11n), 4n);
   assert.equal(powMod(4n, 13n, 497n), 445n);
+});
+
+test("HOTP and TOTP match RFC 4226 and RFC 6238 vectors", async () => {
+  const toBase32 = (value) => {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let bits = "";
+    for (const byte of Buffer.from(value)) bits += byte.toString(2).padStart(8, "0");
+    return bits.match(/.{1,5}/g).map((chunk) => alphabet[parseInt(chunk.padEnd(5, "0"), 2)]).join("");
+  };
+  const secret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
+  assert.equal(await generateHotp(secret, 0n), "755224");
+  assert.equal(await generateHotp(secret, 1n), "287082");
+  assert.deepEqual(await generateTotp(secret, 59, 30, 8), { code: "94287082", counter: 1n, remainingSeconds: 1 });
+  assert.equal((await generateTotp(toBase32("12345678901234567890123456789012"), 59, 30, 8, "SHA-256")).code, "46119246");
+  assert.equal((await generateTotp(toBase32("1234567890123456789012345678901234567890123456789012345678901234"), 59, 30, 8, "SHA-512")).code, "90693936");
+});
+
+test("IP converter normalizes IPv4 and compresses IPv6", () => {
+  assert.deepEqual(analyzeIpAddress("192.0.2.1"), {
+    version: 4,
+    normalized: "192.0.2.1",
+    expanded: "192.0.2.1",
+    decimal: "3221225985",
+    hexadecimal: "0xc0000201",
+    binary: "11000000.00000000.00000010.00000001",
+    reverseDns: "1.2.0.192.in-addr.arpa",
+  });
+  const ipv6 = analyzeIpAddress("2001:0db8:0000:0000:0000:ff00:0042:8329");
+  assert.equal(ipv6.normalized, "2001:db8::ff00:42:8329");
+  assert.equal(ipv6.expanded, "2001:0db8:0000:0000:0000:ff00:0042:8329");
+  assert.match(ipv6.reverseDns, /\.ip6\.arpa$/);
+  assert.equal(analyzeIpAddress("[::1]").normalized, "::1");
+  assert.throws(() => analyzeIpAddress("[::1"), /方括號/);
+});
+
+test("Unicode escape codec handles JavaScript, code points, and numeric entities", () => {
+  assert.equal(decodeEscapedText("\\u0066\\x6c\\u{61}g", "javascript"), "flag");
+  assert.equal(decodeEscapedText("U+1F600 U+0021", "codepoints"), "😀!");
+  assert.equal(decodeEscapedText("&#x66;&#108;ag", "html-numeric"), "flag");
+  assert.equal(encodeEscapedText("資😀", "codepoints"), "U+8CC7 U+1F600");
 });

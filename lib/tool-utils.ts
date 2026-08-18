@@ -497,3 +497,189 @@ export function powMod(base: bigint, exponent: bigint, modulus: bigint) {
   while (power) { if (power & BigInt(1)) result = (result * current) % modulus; current = (current * current) % modulus; power >>= BigInt(1); }
   return result;
 }
+
+export type OtpAlgorithm = "SHA-1" | "SHA-256" | "SHA-512";
+
+export function decodeBase32(value: string) {
+  assertSafeInput(value);
+  const normalized = value.toUpperCase().replace(/[\s-]+/g, "").replace(/=+$/, "");
+  if (!normalized) throw new Error("Base32 Secret 不可為空。 ");
+  if (!/^[A-Z2-7]+$/.test(normalized)) throw new Error("Base32 Secret 只能包含 A–Z 與 2–7。 ");
+  if ([1, 3, 6].includes(normalized.length % 8)) throw new Error("Base32 Secret 長度不合法。 ");
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const bytes: number[] = [];
+  let accumulator = 0;
+  let bitCount = 0;
+  for (const character of normalized) {
+    accumulator = accumulator * 32 + alphabet.indexOf(character);
+    bitCount += 5;
+    if (bitCount >= 8) {
+      bitCount -= 8;
+      bytes.push((accumulator >>> bitCount) & 0xff);
+      accumulator &= (1 << bitCount) - 1;
+    }
+  }
+  if (accumulator !== 0) throw new Error("Base32 Secret 的 padding bits 不合法。 ");
+  return Uint8Array.from(bytes);
+}
+
+export async function generateHotp(secret: string, counter: bigint, digits: 6 | 7 | 8 = 6, algorithm: OtpAlgorithm = "SHA-1") {
+  if (counter < 0 || counter > 0xffffffffffffffffn) throw new Error("HOTP Counter 必須介於 0 與 2⁶⁴−1。 ");
+  const keyBytes = decodeBase32(secret);
+  const counterBytes = new Uint8Array(8);
+  let remaining = counter;
+  for (let index = 7; index >= 0; index -= 1) {
+    counterBytes[index] = Number(remaining & 0xffn);
+    remaining >>= 8n;
+  }
+  const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: algorithm }, false, ["sign"]);
+  const digest = new Uint8Array(await crypto.subtle.sign("HMAC", key, counterBytes));
+  const offset = digest[digest.length - 1] & 0x0f;
+  const binary = ((digest[offset] & 0x7f) << 24)
+    | (digest[offset + 1] << 16)
+    | (digest[offset + 2] << 8)
+    | digest[offset + 3];
+  return String(binary % (10 ** digits)).padStart(digits, "0");
+}
+
+export async function generateTotp(secret: string, unixSeconds = Math.floor(Date.now() / 1000), period = 30, digits: 6 | 7 | 8 = 6, algorithm: OtpAlgorithm = "SHA-1") {
+  if (!Number.isSafeInteger(unixSeconds) || unixSeconds < 0) throw new Error("Unix 時間必須是非負整數。 ");
+  if (!Number.isInteger(period) || period < 1 || period > 300) throw new Error("TOTP 週期必須介於 1 與 300 秒。 ");
+  const counter = BigInt(Math.floor(unixSeconds / period));
+  return {
+    code: await generateHotp(secret, counter, digits, algorithm),
+    counter,
+    remainingSeconds: period - (unixSeconds % period),
+  };
+}
+
+function parseIpv4Parts(value: string) {
+  const parts = value.split(".");
+  if (parts.length !== 4 || parts.some((part) => !/^(?:0|[1-9]\d{0,2})$/.test(part) || Number(part) > 255)) {
+    throw new Error("請輸入有效的 IPv4 或 IPv6 位址。 ");
+  }
+  return parts.map(Number);
+}
+
+function parseIpv6Hextets(value: string) {
+  const address = value.toLowerCase();
+  if ((address.match(/::/g) ?? []).length > 1) throw new Error("IPv6 位址只能包含一個 ::。 ");
+  const expandSide = (side: string) => side ? side.split(":").flatMap((part, index, all) => {
+    if (part.includes(".")) {
+      if (index !== all.length - 1) throw new Error("IPv4 尾端必須位於 IPv6 最後。 ");
+      const ipv4 = parseIpv4Parts(part);
+      return [(ipv4[0] << 8) | ipv4[1], (ipv4[2] << 8) | ipv4[3]];
+    }
+    if (!/^[a-f0-9]{1,4}$/.test(part)) throw new Error("IPv6 hextet 格式錯誤。 ");
+    return [parseInt(part, 16)];
+  }) : [];
+  const [leftText, rightText = ""] = address.split("::");
+  const left = expandSide(leftText);
+  const right = expandSide(rightText);
+  if (address.includes("::")) {
+    const missing = 8 - left.length - right.length;
+    if (missing < 1) throw new Error("IPv6 位址包含過多 hextet。 ");
+    return [...left, ...Array(missing).fill(0), ...right];
+  }
+  if (left.length !== 8) throw new Error("IPv6 位址必須包含 8 個 hextet，或使用 :: 壓縮。 ");
+  return left;
+}
+
+function compressIpv6(hextets: number[]) {
+  let bestStart = -1;
+  let bestLength = 0;
+  for (let index = 0; index < hextets.length;) {
+    if (hextets[index] !== 0) { index += 1; continue; }
+    let end = index;
+    while (end < hextets.length && hextets[end] === 0) end += 1;
+    if (end - index > bestLength && end - index >= 2) { bestStart = index; bestLength = end - index; }
+    index = end;
+  }
+  if (bestStart < 0) return hextets.map((part) => part.toString(16)).join(":");
+  const left = hextets.slice(0, bestStart).map((part) => part.toString(16)).join(":");
+  const right = hextets.slice(bestStart + bestLength).map((part) => part.toString(16)).join(":");
+  return `${left}::${right}`;
+}
+
+export function analyzeIpAddress(value: string) {
+  const raw = value.trim();
+  const hasOpeningBracket = raw.startsWith("[");
+  const hasClosingBracket = raw.endsWith("]");
+  if (hasOpeningBracket !== hasClosingBracket) throw new Error("IPv6 方括號必須成對出現。 ");
+  const input = hasOpeningBracket ? raw.slice(1, -1) : raw;
+  assertSafeInput(input);
+  if (!input || /%/.test(input)) throw new Error("請輸入不含 Zone ID 的 IPv4 或 IPv6 位址。 ");
+  if (!input.includes(":")) {
+    const parts = parseIpv4Parts(input);
+    const integer = parts.reduce((total, part) => (total << 8n) | BigInt(part), 0n);
+    const normalized = parts.join(".");
+    return {
+      version: 4 as const,
+      normalized,
+      expanded: normalized,
+      decimal: integer.toString(),
+      hexadecimal: `0x${integer.toString(16).padStart(8, "0")}`,
+      binary: parts.map((part) => part.toString(2).padStart(8, "0")).join("."),
+      reverseDns: `${[...parts].reverse().join(".")}.in-addr.arpa`,
+    };
+  }
+  const hextets = parseIpv6Hextets(input);
+  const fullHex = hextets.map((part) => part.toString(16).padStart(4, "0")).join("");
+  const integer = BigInt(`0x${fullHex}`);
+  return {
+    version: 6 as const,
+    normalized: compressIpv6(hextets),
+    expanded: hextets.map((part) => part.toString(16).padStart(4, "0")).join(":"),
+    decimal: integer.toString(),
+    hexadecimal: `0x${fullHex}`,
+    binary: hextets.map((part) => part.toString(2).padStart(16, "0")).join(":"),
+    reverseDns: `${fullHex.split("").reverse().join(".")}.ip6.arpa`,
+  };
+}
+
+export type EscapeFormat = "javascript" | "codepoints" | "html-numeric";
+
+function codePointToCharacter(value: number) {
+  if (!Number.isInteger(value) || value < 0 || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff)) {
+    throw new Error(`無效的 Unicode code point：${value.toString(16).toUpperCase()}。 `);
+  }
+  return String.fromCodePoint(value);
+}
+
+export function decodeEscapedText(value: string, format: EscapeFormat) {
+  assertSafeInput(value);
+  if (format === "codepoints") {
+    const tokens = value.trim().split(/[\s,]+/).filter(Boolean);
+    return tokens.map((token) => {
+      const match = token.match(/^(?:U\+|0x)?([a-f0-9]{1,6})$/i);
+      if (!match) throw new Error(`無法解析 code point：${token}。 `);
+      return codePointToCharacter(parseInt(match[1], 16));
+    }).join("");
+  }
+  if (format === "html-numeric") {
+    return value.replace(/&#(x[a-f0-9]+|\d+);?/gi, (match, raw: string) => {
+      const point = raw[0].toLowerCase() === "x" ? parseInt(raw.slice(1), 16) : parseInt(raw, 10);
+      try { return codePointToCharacter(point); } catch { return match; }
+    });
+  }
+  return value.replace(/\\u\{([a-f0-9]{1,6})\}|\\u([a-f0-9]{4})|\\x([a-f0-9]{2})|\\([0\\'"bfnrtv])/gi, (match, braced: string, unicode: string, hex: string, simple: string) => {
+    if (braced) return codePointToCharacter(parseInt(braced, 16));
+    if (unicode) return String.fromCharCode(parseInt(unicode, 16));
+    if (hex) return String.fromCharCode(parseInt(hex, 16));
+    const escapes: Record<string, string> = { "0": "\0", "\\": "\\", "'": "'", "\"": "\"", b: "\b", f: "\f", n: "\n", r: "\r", t: "\t", v: "\v" };
+    return escapes[simple] ?? match;
+  });
+}
+
+export function encodeEscapedText(value: string, format: EscapeFormat) {
+  assertSafeInput(value);
+  if (format === "codepoints") return Array.from(value, (character) => `U+${character.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0")}`).join(" ");
+  if (format === "html-numeric") return Array.from(value, (character) => `&#x${character.codePointAt(0)?.toString(16).toUpperCase()};`).join("");
+  return Array.from(value, (character) => {
+    const point = character.codePointAt(0) ?? 0;
+    const simple: Record<string, string> = { "\0": "\\0", "\\": "\\\\", "\"": "\\\"", "'": "\\'", "\b": "\\b", "\f": "\\f", "\n": "\\n", "\r": "\\r", "\t": "\\t", "\v": "\\v" };
+    if (simple[character]) return simple[character];
+    if (point >= 0x20 && point <= 0x7e) return character;
+    return point <= 0xffff ? `\\u${point.toString(16).toUpperCase().padStart(4, "0")}` : `\\u{${point.toString(16).toUpperCase()}}`;
+  }).join("");
+}

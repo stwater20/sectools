@@ -12,6 +12,11 @@ test("catalog has unique slugs and meaningful SEO copy", () => {
   }
 });
 
+test("every catalog entry has a workbench implementation", async () => {
+  const workbench = await readFile(new URL("../components/tool-workbench.tsx", import.meta.url), "utf8");
+  for (const tool of toolCatalog) assert.ok(workbench.includes(`case "${tool.slug}"`), `${tool.slug} is missing its workbench`);
+});
+
 test("layout declares a restrictive local-first CSP", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   assert.match(layout, /connect-src 'none'/);

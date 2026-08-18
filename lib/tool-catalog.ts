@@ -102,6 +102,17 @@ export const toolCatalog: ToolDefinition[] = [
     tags: ["password", "entropy", "strength", "密碼強度"],
   },
   {
+    slug: "otp-generator",
+    name: "TOTP／HOTP 驗證碼",
+    englishName: "TOTP & HOTP Generator",
+    description: "使用本機 Web Crypto 依 RFC 4226／6238 計算一次性驗證碼，支援 SHA-1、SHA-256 與 SHA-512。",
+    category: "密碼與驗證",
+    icon: "OTP",
+    tags: ["totp", "hotp", "mfa", "2fa", "rfc 6238"],
+    featured: true,
+    status: "new",
+  },
+  {
     slug: "ioc-extractor",
     name: "IOC 指標擷取器",
     englishName: "IOC Extractor",
@@ -140,6 +151,17 @@ export const toolCatalog: ToolDefinition[] = [
     icon: "/",
     tags: ["cidr", "subnet", "ipv4", "network"],
     featured: true,
+  },
+  {
+    slug: "ip-address-converter",
+    name: "IP 位址轉換器",
+    englishName: "IPv4 & IPv6 Address Converter",
+    description: "正規化 IPv4／IPv6，並轉換成展開格式、整數、Hex、Binary 與 Reverse DNS 名稱。",
+    category: "網路與風險",
+    icon: "IP",
+    tags: ["ipv4", "ipv6", "hex", "reverse dns", "network"],
+    featured: true,
+    status: "new",
   },
   {
     slug: "cvss-calculator",
@@ -264,6 +286,7 @@ export const toolCatalog: ToolDefinition[] = [
   { slug: "base-ascii-converter", name: "進位與 ASCII 轉換器", englishName: "Number Base & ASCII Converter", description: "在 Binary、Octal、Decimal、Hex 與 ASCII bytes 間轉換，支援空白分隔輸入。", category: "CTF 工具", icon: "0b", tags: ["binary", "hex", "ascii", "base", "ctf"], featured: true, status: "new" },
   { slug: "integer-packer", name: "整數 Pack／Unpack", englishName: "Integer Packing Tool", description: "將整數轉成 p16、p32、p64 的 Little／Big Endian bytes，或從 Hex 還原數值。", category: "CTF 工具", icon: "p64", tags: ["pwn", "pack", "unpack", "endian", "ctf"], featured: true, status: "new" },
   { slug: "rsa-math-helper", name: "RSA 數學助手", englishName: "RSA Math Helper", description: "計算 GCD、模反元素與快速模冪，協助 CTF RSA 題目的基礎數論運算。", category: "CTF 工具", icon: "RSA", tags: ["rsa", "gcd", "modular inverse", "powmod", "crypto"], featured: true, status: "new" },
+  { slug: "unicode-escape-codec", name: "Unicode／跳脫序列工具", englishName: "Unicode Escape Codec", description: "安全編解碼 JavaScript escape、Unicode code point 與 HTML numeric entity，不執行輸入內容。", category: "CTF 工具", icon: "U+", tags: ["unicode", "escape", "javascript", "html entity", "ctf"], featured: true, status: "new" },
 ];
 
 export function findTool(slug: string) {

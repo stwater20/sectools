@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   analyzeEmailHeaders,
+  analyzeIpAddress,
   analyzeSecurityHeaders,
   analyzeUrlRisk,
   asciiToNumbers,
@@ -18,9 +19,11 @@ import {
   caesarBruteforce,
   convertNumberBase,
   decodeJwtPart,
+  decodeEscapedText,
   decodeTimestamp,
   defang,
   estimatePassword,
+  encodeEscapedText,
   extractIocs,
   extractPrintableStrings,
   formatHexView,
@@ -32,11 +35,15 @@ import {
   unpackInteger,
   xorTransform,
   gcdBigInt,
+  generateHotp,
+  generateTotp,
   modInverse,
   powMod,
   scanSecrets,
   utf8ToBase64,
   type CvssMetrics,
+  type EscapeFormat,
+  type OtpAlgorithm,
   type TimestampFormat,
 } from "@/lib/tool-utils";
 
@@ -350,6 +357,59 @@ function IntegerPackerTool(){const[value,setValue]=useState("");const[bits,setBi
 
 function RsaMathTool(){const[a,setA]=useState("");const[b,setB]=useState("");const[m,setM]=useState("");const[output,setOutput]=useState("");const[error,setError]=useState("");function run(type:"gcd"|"inverse"|"pow"){try{const aa=BigInt(a),bb=BigInt(b);setOutput(String(type==="gcd"?gcdBigInt(aa,bb):type==="inverse"?modInverse(aa,bb):powMod(aa,bb,BigInt(m))));setError("")}catch(cause){setError(cause instanceof Error?cause.message:"計算失敗。 ")}}return <div className="single-workbench"><div className="workbench-grid"><label className="field"><span>A / Base</span><input value={a} onChange={e=>setA(e.target.value)}/></label><label className="field"><span>B / Exponent</span><input value={b} onChange={e=>setB(e.target.value)}/></label></div><label className="field"><span>Modulus（僅快速模冪使用）</span><input value={m} onChange={e=>setM(e.target.value)}/></label><div className="button-row"><button className="primary-button" type="button" onClick={()=>run("gcd")}>GCD(A, B)</button><button className="ghost-button" type="button" onClick={()=>run("inverse")}>A⁻¹ mod B</button><button className="ghost-button" type="button" onClick={()=>run("pow")}>Aᴮ mod M</button></div><ErrorNotice message={error}/>{output&&<div className="result-block"><span>RESULT</span><code>{output}</code></div>}</div>}
 
+function OtpTool() {
+  const [mode, setMode] = useState<"totp" | "hotp">("totp");
+  const [secret, setSecret] = useState("");
+  const [counter, setCounter] = useState("0");
+  const [period, setPeriod] = useState(30);
+  const [digits, setDigits] = useState<6 | 7 | 8>(6);
+  const [algorithm, setAlgorithm] = useState<OtpAlgorithm>("SHA-1");
+  const [result, setResult] = useState<{ code: string; counter: string; note: string } | null>(null);
+  const [error, setError] = useState("");
+  async function run() {
+    try {
+      if (mode === "totp") {
+        const now = Math.floor(Date.now() / 1000);
+        const generated = await generateTotp(secret, now, period, digits, algorithm);
+        setResult({ code: generated.code, counter: generated.counter.toString(), note: `以目前裝置時間產生，約 ${generated.remainingSeconds} 秒後更新` });
+      } else {
+        const parsedCounter = BigInt(counter.trim());
+        setResult({ code: await generateHotp(secret, parsedCounter, digits, algorithm), counter: parsedCounter.toString(), note: "HOTP 使用後應由驗證端遞增 Counter" });
+      }
+      setError("");
+    } catch (cause) {
+      setResult(null);
+      setError(cause instanceof Error ? cause.message : "OTP 計算失敗。 ");
+    }
+  }
+  return <div className="single-workbench"><div className="warning-banner"><strong>Secret 只保留在目前分頁記憶體</strong><span>請勿在共享裝置輸入正式帳號的 MFA Secret；本工具不會保存或傳送內容。</span></div><div className="button-row"><button type="button" className={mode === "totp" ? "primary-button" : "ghost-button"} onClick={() => { setMode("totp"); setResult(null); }}>TOTP（時間型）</button><button type="button" className={mode === "hotp" ? "primary-button" : "ghost-button"} onClick={() => { setMode("hotp"); setResult(null); }}>HOTP（Counter 型）</button></div><label className="field"><span>Base32 Secret</span><input type="password" value={secret} onChange={(event) => setSecret(event.target.value)} autoComplete="off" placeholder="JBSWY3DPEHPK3PXP" spellCheck={false} /></label><div className="workbench-grid"><label className="field"><span>{mode === "totp" ? "週期（秒）" : "Counter"}</span>{mode === "totp" ? <input type="number" min="1" max="300" value={period} onChange={(event) => setPeriod(Number(event.target.value))} /> : <input value={counter} onChange={(event) => setCounter(event.target.value)} inputMode="numeric" />}</label><label className="field"><span>位數</span><select value={digits} onChange={(event) => setDigits(Number(event.target.value) as 6 | 7 | 8)}><option value={6}>6 digits</option><option value={7}>7 digits</option><option value={8}>8 digits</option></select></label></div><label className="field field--short"><span>HMAC 演算法</span><select value={algorithm} onChange={(event) => setAlgorithm(event.target.value as OtpAlgorithm)}><option>SHA-1</option><option>SHA-256</option><option>SHA-512</option></select><small>多數 Authenticator 預設使用 SHA-1；請依服務端設定選擇。</small></label><button className="primary-button" type="button" onClick={run}>產生 {mode.toUpperCase()}</button><ErrorNotice message={error} />{result && <div className="otp-report"><span>ONE-TIME PASSWORD</span><strong>{result.code}</strong><small>Counter {result.counter} · {result.note}</small><CopyButton value={result.code} label="複製驗證碼" /></div>}</div>;
+}
+
+function IpAddressTool() {
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState<ReturnType<typeof analyzeIpAddress> | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setResult(analyzeIpAddress(input)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "IP 位址解析失敗。 "); }
+  }
+  const labels = { normalized: "正規化", expanded: "完整展開", decimal: "整數（Decimal）", hexadecimal: "Hexadecimal", binary: "Binary", reverseDns: "Reverse DNS" };
+  return <div className="single-workbench"><label className="field"><span>IPv4 或 IPv6 位址</span><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") run(); }} placeholder="2001:db8::ff00:42:8329" spellCheck={false} /></label><button className="primary-button" type="button" onClick={run}>解析與轉換</button><ErrorNotice message={error} />{result && <div className="ip-report"><div className="file-verdict"><span>辨識結果</span><strong>IPv{result.version}</strong></div><div className="timestamp-results">{Object.entries(labels).map(([key, label]) => <div key={key}><span>{label}</span><code>{String(result[key as keyof typeof labels])}</code></div>)}</div><CopyButton value={result.normalized} label="複製正規化位址" /></div>}</div>;
+}
+
+function UnicodeEscapeTool() {
+  const [input, setInput] = useState("");
+  const [output, setOutput] = useState("");
+  const [format, setFormat] = useState<EscapeFormat>("javascript");
+  const [error, setError] = useState("");
+  function run(direction: "encode" | "decode") {
+    try { setOutput(direction === "encode" ? encodeEscapedText(input, format) : decodeEscapedText(input, format)); setError(""); }
+    catch (cause) { setOutput(""); setError(cause instanceof Error ? cause.message : "跳脫序列處理失敗。 "); }
+  }
+  const placeholders: Record<EscapeFormat, string> = { javascript: "\\u0066\\u006c\\u0061\\u0067 或文字", codepoints: "U+0066 U+006C U+0061 U+0067", "html-numeric": "&#x66;&#x6C;&#x61;&#x67;" };
+  return <div className="single-workbench"><div className="warning-banner"><strong>只做字串轉換，不執行程式碼</strong><span>未知的跳脫片段會保留原樣；HTML 模式只處理 numeric entity，不解析 named entity 或標籤。</span></div><label className="field field--short"><span>格式</span><select value={format} onChange={(event) => { setFormat(event.target.value as EscapeFormat); setOutput(""); }}><option value="javascript">JavaScript \\u／\\x escape</option><option value="codepoints">Unicode code points</option><option value="html-numeric">HTML numeric entities</option></select></label><div className="workbench-grid"><div><TextArea label="輸入" value={input} onChange={setInput} placeholder={placeholders[format]} rows={10} /><div className="button-row"><button className="primary-button" type="button" onClick={() => run("decode")}>解碼</button><button className="ghost-button" type="button" onClick={() => run("encode")}>編碼</button></div><ErrorNotice message={error} /></div><div><TextArea label="結果" value={output} onChange={setOutput} placeholder="結果會以純文字顯示" rows={10} /><CopyButton value={output} /></div></div></div>;
+}
+
 export function ToolWorkbench({ slug }: { slug: string }) {
   switch (slug) {
     case "base64-codec": return <CodecTool mode="base64" />;
@@ -380,6 +440,9 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "base-ascii-converter": return <BaseAsciiTool />;
     case "integer-packer": return <IntegerPackerTool />;
     case "rsa-math-helper": return <RsaMathTool />;
+    case "otp-generator": return <OtpTool />;
+    case "ip-address-converter": return <IpAddressTool />;
+    case "unicode-escape-codec": return <UnicodeEscapeTool />;
     default: return null;
   }
 }
