@@ -11,6 +11,7 @@
 - 網站與郵件：Security Headers Analyzer、Email Header Analyzer
 - 鑑識與分析：File Signature Checker、String Extractor、Forensic Timestamp Decoder
 - 進階分析：Secret Scanner、Hash Identifier、Hex Viewer、Suspicious URL Analyzer、chmod Calculator
+- CTF：XOR Tool、Caesar Brute Force、Base/ASCII Converter、Integer Pack/Unpack、RSA Math Helper
 
 每個工具都有獨立靜態網址、SEO metadata、結構化資料與安全使用提醒。
 

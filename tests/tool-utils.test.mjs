@@ -4,9 +4,13 @@ import {
   analyzeEmailHeaders,
   analyzeSecurityHeaders,
   analyzeUrlRisk,
+  asciiToNumbers,
   base64ToUtf8,
   calculateCidr,
   calculateChmod,
+  bruteForceSingleByteXor,
+  caesarBruteforce,
+  convertNumberBase,
   calculateCvss,
   calculateEntropy,
   decodeTimestamp,
@@ -18,6 +22,12 @@ import {
   identifyFileSignature,
   refang,
   scanSecrets,
+  packInteger,
+  unpackInteger,
+  xorTransform,
+  gcdBigInt,
+  modInverse,
+  powMod,
   utf8ToBase64,
 } from "../lib/tool-utils.ts";
 
@@ -136,4 +146,31 @@ test("chmod calculator renders symbolic permissions and flags SUID", () => {
   const result = calculateChmod("4755");
   assert.equal(result.symbolic, "rwsr-xr-x");
   assert.ok(result.warnings.some((warning) => warning.includes("SUID")));
+});
+
+test("XOR tool round-trips repeating-key ciphertext", () => {
+  const encrypted = xorTransform("flag{test}", "key");
+  const decrypted = xorTransform(encrypted.hex, "key", true);
+  assert.equal(decrypted.text, "flag{test}");
+  assert.ok(bruteForceSingleByteXor("272e2f2f2c").length > 0);
+});
+
+test("Caesar brute force includes ROT13 plaintext", () => {
+  assert.equal(caesarBruteforce("synt")[13].text, "flag");
+});
+
+test("base and ASCII converters preserve large integer precision", () => {
+  assert.equal(convertNumberBase("FFFFFFFFFFFFFFFF", 16, 10), "18446744073709551615");
+  assert.equal(asciiToNumbers("A", 16), "41");
+});
+
+test("integer packing supports p64 little endian", () => {
+  const packed = packInteger("4198400", 64, true);
+  assert.equal(unpackInteger(packed, true), "4198400");
+});
+
+test("RSA helpers calculate gcd, inverse, and modular exponent", () => {
+  assert.equal(gcdBigInt(48n, 18n), 6n);
+  assert.equal(modInverse(3n, 11n), 4n);
+  assert.equal(powMod(4n, 13n, 497n), 445n);
 });

@@ -401,3 +401,99 @@ export function calculateChmod(mode: string) {
   if (special & 2) warnings.push("已設定 SGID，程式可能以群組權限執行。");
   return { symbolic: triplets.join(""), normalized: `${special ? special : ""}${digits}`, warnings };
 }
+
+export function hexToBytes(value: string) {
+  const normalized = value.replace(/(?:0x|\s|:|-)/gi, "");
+  if (!normalized || normalized.length % 2 || !/^[a-f0-9]+$/i.test(normalized)) throw new Error("Hex 必須包含偶數個十六進位字元。 ");
+  return Uint8Array.from(normalized.match(/.{2}/g) ?? [], (pair) => parseInt(pair, 16));
+}
+
+export function xorTransform(input: string, key: string, inputHex = false, keyHex = false) {
+  const data = inputHex ? hexToBytes(input) : new TextEncoder().encode(input);
+  const keyBytes = keyHex ? hexToBytes(key) : new TextEncoder().encode(key);
+  if (!keyBytes.length) throw new Error("Key 不可為空。 ");
+  const output = data.map((byte, index) => byte ^ keyBytes[index % keyBytes.length]);
+  return { hex: Array.from(output, (byte) => byte.toString(16).padStart(2, "0")).join(""), text: new TextDecoder().decode(output) };
+}
+
+export function bruteForceSingleByteXor(value: string) {
+  const bytes = hexToBytes(value);
+  return Array.from({ length: 256 }, (_, key) => {
+    const output = bytes.map((byte) => byte ^ key);
+    const text = Array.from(output, (byte) => byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : ".").join("");
+    const score = Array.from(output).reduce((total, byte) => total + (byte === 32 ? 3 : /[ETAOINetaoin]/.test(String.fromCharCode(byte)) ? 2 : byte >= 32 && byte <= 126 ? 0.2 : -4), 0);
+    return { key, hexKey: key.toString(16).padStart(2, "0"), text, score };
+  }).sort((a, b) => b.score - a.score).slice(0, 12);
+}
+
+export function caesarBruteforce(value: string) {
+  return Array.from({ length: 26 }, (_, shift) => ({ shift, text: value.replace(/[a-z]/gi, (character) => {
+    const base = character <= "Z" ? 65 : 97;
+    return String.fromCharCode(((character.charCodeAt(0) - base - shift + 26) % 26) + base);
+  }) }));
+}
+
+export function convertNumberBase(value: string, fromBase: number, toBase: number) {
+  if (![2, 8, 10, 16].includes(fromBase) || ![2, 8, 10, 16].includes(toBase)) throw new Error("不支援的進位。 ");
+  const tokens = value.trim().split(/[\s,]+/).filter(Boolean);
+  if (!tokens.length) return "";
+  const parsed = tokens.map((token) => {
+    const clean = token.replace(/^0[xob]/i, "");
+    let number = BigInt(0);
+    for (const character of clean.toLowerCase()) {
+      const digit = "0123456789abcdef".indexOf(character);
+      if (digit < 0 || digit >= fromBase) throw new Error(`無法解析 ${token}。 `);
+      number = number * BigInt(fromBase) + BigInt(digit);
+    }
+    return number;
+  });
+  if (toBase === 10) return parsed.map(String).join(" ");
+  return parsed.map((number) => number.toString(toBase).toUpperCase()).join(" ");
+}
+
+export function asciiToNumbers(value: string, base: number) {
+  return Array.from(new TextEncoder().encode(value), (byte) => byte.toString(base).toUpperCase()).join(" ");
+}
+
+export function numbersToAscii(value: string, base: number) {
+  const numbers = value.trim().split(/[\s,]+/).filter(Boolean).map((token) => parseInt(token.replace(/^0[xob]/i, ""), base));
+  if (numbers.some((number) => !Number.isInteger(number) || number < 0 || number > 255)) throw new Error("ASCII byte 必須介於 0 到 255。 ");
+  return new TextDecoder().decode(Uint8Array.from(numbers));
+}
+
+export function packInteger(value: string, bits: 16 | 32 | 64, littleEndian: boolean) {
+  const number = BigInt(value.trim());
+  const max = (BigInt(1) << BigInt(bits)) - BigInt(1);
+  if (number < BigInt(0) || number > max) throw new Error(`數值必須介於 0 與 ${max}。 `);
+  const bytes = new Uint8Array(bits / 8);
+  for (let index = 0; index < bytes.length; index += 1) bytes[littleEndian ? index : bytes.length - 1 - index] = Number((number >> BigInt(index * 8)) & BigInt(255));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(" ");
+}
+
+export function unpackInteger(value: string, littleEndian: boolean) {
+  const bytes = hexToBytes(value);
+  if (![2, 4, 8].includes(bytes.length)) throw new Error("請輸入 2、4 或 8 bytes。 ");
+  let result = BigInt(0);
+  for (let index = 0; index < bytes.length; index += 1) result |= BigInt(bytes[index]) << BigInt((littleEndian ? index : bytes.length - 1 - index) * 8);
+  return result.toString();
+}
+
+export function gcdBigInt(a: bigint, b: bigint) {
+  let left = a < 0 ? -a : a; let right = b < 0 ? -b : b;
+  while (right) [left, right] = [right, left % right];
+  return left;
+}
+
+export function modInverse(value: bigint, modulus: bigint) {
+  let [oldR, r] = [value, modulus]; let [oldS, s] = [BigInt(1), BigInt(0)];
+  while (r) { const q = oldR / r; [oldR, r] = [r, oldR - q * r]; [oldS, s] = [s, oldS - q * s]; }
+  if (oldR !== BigInt(1) && oldR !== BigInt(-1)) throw new Error("模反元素不存在，兩數並非互質。 ");
+  return ((oldS % modulus) + modulus) % modulus;
+}
+
+export function powMod(base: bigint, exponent: bigint, modulus: bigint) {
+  if (modulus <= 0 || exponent < 0) throw new Error("Modulus 必須為正數，Exponent 不可為負。 ");
+  let result = BigInt(1); let current = ((base % modulus) + modulus) % modulus; let power = exponent;
+  while (power) { if (power & BigInt(1)) result = (result * current) % modulus; current = (current * current) % modulus; power >>= BigInt(1); }
+  return result;
+}

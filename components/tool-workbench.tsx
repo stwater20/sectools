@@ -5,6 +5,7 @@ import {
   analyzeEmailHeaders,
   analyzeSecurityHeaders,
   analyzeUrlRisk,
+  asciiToNumbers,
   assertSafeInput,
   base64ToUtf8,
   bytesToBase64,
@@ -13,6 +14,9 @@ import {
   calculateCvss,
   calculateEntropy,
   calculateChmod,
+  bruteForceSingleByteXor,
+  caesarBruteforce,
+  convertNumberBase,
   decodeJwtPart,
   decodeTimestamp,
   defang,
@@ -23,6 +27,13 @@ import {
   identifyHash,
   identifyFileSignature,
   refang,
+  numbersToAscii,
+  packInteger,
+  unpackInteger,
+  xorTransform,
+  gcdBigInt,
+  modInverse,
+  powMod,
   scanSecrets,
   utf8ToBase64,
   type CvssMetrics,
@@ -324,6 +335,21 @@ function ChmodTool() {
   return <div className="single-workbench"><label className="field field--short"><span>八進位權限</span><input value={mode} onChange={(event) => setMode(event.target.value)} onBlur={validate} placeholder="755" inputMode="numeric" /></label><ErrorNotice message={error} />{result && <div className="chmod-report"><div className="chmod-symbol"><strong>{result.symbolic}</strong><span>chmod {result.normalized}</span></div><div className="permission-grid">{["OWNER", "GROUP", "OTHERS"].map((label,index) => <div key={label}><span>{label}</span><code>{result.symbolic.slice(index * 3, index * 3 + 3)}</code></div>)}</div>{result.warnings.length ? <div className="warning-list"><strong>安全提醒</strong><ul>{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div> : <p className="safe-note">目前沒有 world-writable、SUID 或 SGID 警訊。</p>}</div>}</div>;
 }
 
+function XorTool() {
+  const [input, setInput] = useState(""); const [key, setKey] = useState(""); const [inputHex, setInputHex] = useState(false); const [keyHex, setKeyHex] = useState(false); const [output, setOutput] = useState<{hex:string;text:string}|null>(null); const [candidates, setCandidates] = useState<ReturnType<typeof bruteForceSingleByteXor>>([]); const [error, setError] = useState("");
+  function run() { try { setOutput(xorTransform(input,key,inputHex,keyHex)); setCandidates([]); setError(""); } catch(cause) { setError(cause instanceof Error ? cause.message : "XOR 失敗。 "); } }
+  function brute() { try { setCandidates(bruteForceSingleByteXor(input)); setOutput(null); setError(""); } catch(cause) { setError(cause instanceof Error ? cause.message : "枚舉失敗。 "); } }
+  return <div className="single-workbench"><div className="workbench-grid"><div><TextArea label="輸入" value={input} onChange={setInput} placeholder={inputHex ? "48656c6c6f" : "文字或密文"}/><label className="toggle-line"><input type="checkbox" checked={inputHex} onChange={e=>setInputHex(e.target.checked)}/>輸入為 Hex</label></div><div><label className="field"><span>Key</span><input value={key} onChange={e=>setKey(e.target.value)} placeholder={keyHex ? "ff" : "key"}/></label><label className="toggle-line"><input type="checkbox" checked={keyHex} onChange={e=>setKeyHex(e.target.checked)}/>Key 為 Hex</label></div></div><div className="button-row"><button className="primary-button" type="button" onClick={run}>執行重複 XOR</button><button className="ghost-button" type="button" onClick={brute}>Single-byte 暴力枚舉</button></div><ErrorNotice message={error}/>{output&&<div className="ctf-results"><div><span>HEX</span><code>{output.hex}</code></div><div><span>TEXT</span><code>{output.text}</code></div></div>}{candidates.length>0&&<div className="candidate-list">{candidates.map(item=><div key={item.key}><strong>0x{item.hexKey} ({item.key})</strong><p><code>{item.text}</code></p></div>)}</div>}</div>;
+}
+
+function CaesarTool(){const[input,setInput]=useState("");const rows=useMemo(()=>caesarBruteforce(input),[input]);return <div className="single-workbench"><TextArea label="Ciphertext" value={input} onChange={setInput} placeholder="Gur synt vf va gur synt…"/>{input&&<div className="caesar-list">{rows.map(row=><div key={row.shift}><span>ROT {row.shift}</span><code>{row.text}</code></div>)}</div>}</div>}
+
+function BaseAsciiTool(){const[input,setInput]=useState("");const[from,setFrom]=useState(16);const[to,setTo]=useState(10);const[output,setOutput]=useState("");const[error,setError]=useState("");function run(mode:"number"|"to-ascii"|"from-ascii"){try{setOutput(mode==="number"?convertNumberBase(input,from,to):mode==="to-ascii"?numbersToAscii(input,from):asciiToNumbers(input,to));setError("")}catch(cause){setError(cause instanceof Error?cause.message:"轉換失敗。 ")}}return <div className="single-workbench"><TextArea label="輸入（多個值可用空白分隔）" value={input} onChange={setInput}/><div className="workbench-grid"><label className="field"><span>來源進位</span><select value={from} onChange={e=>setFrom(Number(e.target.value))}>{[2,8,10,16].map(v=><option key={v} value={v}>Base {v}</option>)}</select></label><label className="field"><span>目標進位</span><select value={to} onChange={e=>setTo(Number(e.target.value))}>{[2,8,10,16].map(v=><option key={v} value={v}>Base {v}</option>)}</select></label></div><div className="button-row"><button className="primary-button" type="button" onClick={()=>run("number")}>轉換進位</button><button className="ghost-button" type="button" onClick={()=>run("to-ascii")}>數值 → ASCII</button><button className="ghost-button" type="button" onClick={()=>run("from-ascii")}>ASCII → 數值</button></div><ErrorNotice message={error}/>{output&&<div className="result-block"><span>RESULT</span><code>{output}</code></div>}</div>}
+
+function IntegerPackerTool(){const[value,setValue]=useState("");const[bits,setBits]=useState<16|32|64>(64);const[little,setLittle]=useState(true);const[output,setOutput]=useState("");const[error,setError]=useState("");function run(unpack=false){try{setOutput(unpack?unpackInteger(value,little):packInteger(value,bits,little));setError("")}catch(cause){setError(cause instanceof Error?cause.message:"轉換失敗。 ")}}return <div className="single-workbench"><label className="field"><span>整數或 Hex bytes</span><input value={value} onChange={e=>setValue(e.target.value)} placeholder="4198400 或 00 10 40 00 00 00 00 00"/></label><div className="button-row">{([16,32,64] as const).map(v=><button type="button" className={bits===v?"primary-button":"ghost-button"} onClick={()=>setBits(v)} key={v}>p{v}</button>)}<label className="toggle-line"><input type="checkbox" checked={little} onChange={e=>setLittle(e.target.checked)}/>Little Endian</label></div><div className="button-row"><button className="primary-button" type="button" onClick={()=>run(false)}>Pack</button><button className="ghost-button" type="button" onClick={()=>run(true)}>Unpack</button></div><ErrorNotice message={error}/>{output&&<div className="result-block"><span>RESULT</span><code>{output}</code></div>}</div>}
+
+function RsaMathTool(){const[a,setA]=useState("");const[b,setB]=useState("");const[m,setM]=useState("");const[output,setOutput]=useState("");const[error,setError]=useState("");function run(type:"gcd"|"inverse"|"pow"){try{const aa=BigInt(a),bb=BigInt(b);setOutput(String(type==="gcd"?gcdBigInt(aa,bb):type==="inverse"?modInverse(aa,bb):powMod(aa,bb,BigInt(m))));setError("")}catch(cause){setError(cause instanceof Error?cause.message:"計算失敗。 ")}}return <div className="single-workbench"><div className="workbench-grid"><label className="field"><span>A / Base</span><input value={a} onChange={e=>setA(e.target.value)}/></label><label className="field"><span>B / Exponent</span><input value={b} onChange={e=>setB(e.target.value)}/></label></div><label className="field"><span>Modulus（僅快速模冪使用）</span><input value={m} onChange={e=>setM(e.target.value)}/></label><div className="button-row"><button className="primary-button" type="button" onClick={()=>run("gcd")}>GCD(A, B)</button><button className="ghost-button" type="button" onClick={()=>run("inverse")}>A⁻¹ mod B</button><button className="ghost-button" type="button" onClick={()=>run("pow")}>Aᴮ mod M</button></div><ErrorNotice message={error}/>{output&&<div className="result-block"><span>RESULT</span><code>{output}</code></div>}</div>}
+
 export function ToolWorkbench({ slug }: { slug: string }) {
   switch (slug) {
     case "base64-codec": return <CodecTool mode="base64" />;
@@ -349,6 +375,11 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "hex-viewer": return <HexViewerTool />;
     case "url-risk-analyzer": return <UrlRiskTool />;
     case "chmod-calculator": return <ChmodTool />;
+    case "xor-tool": return <XorTool />;
+    case "caesar-bruteforce": return <CaesarTool />;
+    case "base-ascii-converter": return <BaseAsciiTool />;
+    case "integer-packer": return <IntegerPackerTool />;
+    case "rsa-math-helper": return <RsaMathTool />;
     default: return null;
   }
 }

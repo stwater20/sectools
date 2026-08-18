@@ -1,4 +1,4 @@
-export type ToolCategory = "編碼與雜湊" | "威脅分析" | "網路與風險" | "密碼與驗證" | "鑑識與分析";
+export type ToolCategory = "編碼與雜湊" | "威脅分析" | "網路與風險" | "密碼與驗證" | "鑑識與分析" | "CTF 工具";
 
 export type ToolDefinition = {
   slug: string;
@@ -18,6 +18,7 @@ export const categories: Array<{ name: ToolCategory; label: string }> = [
   { name: "網路與風險", label: "NETWORK" },
   { name: "密碼與驗證", label: "AUTH" },
   { name: "鑑識與分析", label: "FORENSICS" },
+  { name: "CTF 工具", label: "CTF" },
 ];
 
 export const toolCatalog: ToolDefinition[] = [
@@ -258,6 +259,11 @@ export const toolCatalog: ToolDefinition[] = [
     tags: ["chmod", "linux", "permissions", "suid", "unix"],
     featured: true,
   },
+  { slug: "xor-tool", name: "XOR 編解碼與破解", englishName: "XOR Cipher Tool", description: "使用文字或 Hex Key 進行重複 XOR，並暴力枚舉 Single-byte XOR 的可讀結果。", category: "CTF 工具", icon: "⊕", tags: ["xor", "crypto", "single byte", "ctf"], featured: true, status: "new" },
+  { slug: "caesar-bruteforce", name: "Caesar／ROT 暴力枚舉", englishName: "Caesar Cipher Brute Force", description: "一次列出 Caesar Cipher 全部 26 種位移，快速辨識 ROT13 與古典密碼明文。", category: "CTF 工具", icon: "R", tags: ["caesar", "rot13", "cipher", "ctf"], featured: true, status: "new" },
+  { slug: "base-ascii-converter", name: "進位與 ASCII 轉換器", englishName: "Number Base & ASCII Converter", description: "在 Binary、Octal、Decimal、Hex 與 ASCII bytes 間轉換，支援空白分隔輸入。", category: "CTF 工具", icon: "0b", tags: ["binary", "hex", "ascii", "base", "ctf"], featured: true, status: "new" },
+  { slug: "integer-packer", name: "整數 Pack／Unpack", englishName: "Integer Packing Tool", description: "將整數轉成 p16、p32、p64 的 Little／Big Endian bytes，或從 Hex 還原數值。", category: "CTF 工具", icon: "p64", tags: ["pwn", "pack", "unpack", "endian", "ctf"], featured: true, status: "new" },
+  { slug: "rsa-math-helper", name: "RSA 數學助手", englishName: "RSA Math Helper", description: "計算 GCD、模反元素與快速模冪，協助 CTF RSA 題目的基礎數論運算。", category: "CTF 工具", icon: "RSA", tags: ["rsa", "gcd", "modular inverse", "powmod", "crypto"], featured: true, status: "new" },
 ];
 
 export function findTool(slug: string) {
