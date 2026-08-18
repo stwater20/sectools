@@ -3,9 +3,11 @@ import test from "node:test";
 import {
   analyzeEmailHeaders,
   analyzeIpAddress,
+  analyzePathTraversal,
   analyzeSecurityHeaders,
   analyzeUrlRisk,
   asciiToNumbers,
+  aggregateIpv4Cidrs,
   base64ToUtf8,
   calculateCidr,
   calculateIpv6Cidr,
@@ -17,6 +19,7 @@ import {
   calculateEntropy,
   decodeTimestamp,
   decodeEscapedText,
+  decodeDnsMessage,
   decodeLayered,
   defang,
   extractIocs,
@@ -123,6 +126,53 @@ test("layered decoder unwraps URL, hex, and Base64 in bounded steps", () => {
   assert.equal(hexAndBase64.final, "flag");
   assert.deepEqual(hexAndBase64.steps.map((step) => step.format), ["Hex UTF-8", "Base64 UTF-8"]);
   assert.deepEqual(decodeLayered("flag"), { final: "flag", steps: [], reachedLimit: false });
+});
+
+test("IPv4 CIDR aggregator removes duplicates and merges adjacent networks", () => {
+  const result = aggregateIpv4Cidrs([
+    "10.0.0.0/25",
+    "10.0.0.128/25",
+    "10.0.0.64/26",
+    "192.0.2.1",
+    "192.0.2.1 # duplicate",
+  ].join("\n"));
+  assert.deepEqual(result, {
+    inputCount: 5,
+    rangeCount: 2,
+    outputCount: 2,
+    removedCount: 3,
+    totalAddresses: "257",
+    cidrs: ["10.0.0.0/24", "192.0.2.1/32"],
+  });
+  assert.deepEqual(aggregateIpv4Cidrs("192.0.2.1\n192.0.2.2").cidrs, ["192.0.2.1/32", "192.0.2.2/32"]);
+});
+
+test("DNS wire decoder parses compressed A responses and rejects pointer loops", () => {
+  const packet = "12348180000100010000000003777777076578616d706c6503636f6d0000010001c00c000100010000012c00045db8d822";
+  const result = decodeDnsMessage(packet, "hex");
+  assert.equal(result.id, "0x1234");
+  assert.equal(result.kind, "Response");
+  assert.equal(result.rcode, "NOERROR");
+  assert.deepEqual(result.flags, ["QR", "RD", "RA"]);
+  assert.deepEqual(result.questions, [{ name: "www.example.com", type: "A", className: "IN" }]);
+  assert.deepEqual(result.answers, [{ name: "www.example.com", type: "A", className: "IN", ttl: 300, data: "93.184.216.34" }]);
+  assert.equal(decodeDnsMessage(Buffer.from(packet, "hex").toString("base64"), "base64").answers[0].data, "93.184.216.34");
+  assert.throws(() => decodeDnsMessage("000001000001000000000000c00c00010001"), /pointer/);
+});
+
+test("path traversal analyzer exposes double encoding and null bytes", () => {
+  const result = analyzePathTraversal("..%252f..%252fetc%252fpasswd%00.jpg", 3);
+  assert.equal(result.risk, "高");
+  assert.equal(result.decodeSteps.length, 2);
+  assert.equal(result.traversalSegments, 2);
+  assert.equal(result.escapesRoot, 2);
+  assert.equal(result.normalizedDisplay, "../../etc/passwd\\0.jpg");
+  assert.ok(result.findings.some((finding) => finding.includes("double encoding")));
+  assert.ok(result.findings.some((finding) => finding.includes("null byte")));
+
+  const safe = analyzePathTraversal("images/avatar.png");
+  assert.equal(safe.risk, "低");
+  assert.equal(safe.normalized, "images/avatar.png");
 });
 
 test("CVSS v3.1 example calculates a critical 9.8", () => {

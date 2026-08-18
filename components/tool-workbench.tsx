@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 import {
   analyzeEmailHeaders,
   analyzeIpAddress,
+  analyzePathTraversal,
   analyzeSecurityHeaders,
   analyzeUrlRisk,
   asciiToNumbers,
+  aggregateIpv4Cidrs,
   assertSafeInput,
   base64ToUtf8,
   bytesToBase64,
@@ -20,6 +22,7 @@ import {
   caesarBruteforce,
   convertNumberBase,
   decodeJwtPart,
+  decodeDnsMessage,
   decodeEscapedText,
   decodeLayered,
   decodeTimestamp,
@@ -45,6 +48,7 @@ import {
   scanSecrets,
   utf8ToBase64,
   type CvssMetrics,
+  type DnsRecord,
   type EscapeFormat,
   type OtpAlgorithm,
   type TimestampFormat,
@@ -77,6 +81,11 @@ function TextArea({ label, value, onChange, placeholder, rows = 8 }: { label: st
 function HttpParameterList({ title, values }: { title: string; values: Array<{ name: string; value: string }> }) {
   if (!values.length) return null;
   return <section><div><strong>{title}</strong><span>{values.length}</span></div><ul>{values.map((item, index) => <li key={`${item.name}-${index}`}><code>{item.name}</code><span>=</span><code>{item.value}</code></li>)}</ul></section>;
+}
+
+function DnsRecordList({ title, records }: { title: string; records: DnsRecord[] }) {
+  if (!records.length) return null;
+  return <section className="dns-record-section"><div><strong>{title}</strong><span>{records.length} RECORDS</span></div><ol>{records.map((record, index) => <li key={`${record.name}-${record.type}-${index}`}><code>{record.name}</code><strong>{record.type}</strong><span>{record.className} · TTL {record.ttl}</span><code>{record.data || "(empty)"}</code></li>)}</ol></section>;
 }
 
 function CodecTool({ mode }: { mode: "base64" | "url" }) {
@@ -453,6 +462,41 @@ function LayeredDecoderTool() {
   return <div className="single-workbench"><div className="warning-banner"><strong>最多 12 層，單層輸出上限 2 MB</strong><span>只執行已知的字串 decoder，不會 eval、執行腳本或開啟解出的網址。</span></div><TextArea label="多層編碼字串" value={input} onChange={setInput} placeholder="%5A%6D%78%68%5A%77%3D%3D" rows={9} /><label className="field field--short"><span>最多解碼層數</span><select value={maxLayers} onChange={(event) => setMaxLayers(Number(event.target.value))}>{[3,5,8,10,12].map((value) => <option key={value} value={value}>{value} layers</option>)}</select></label><button className="primary-button" type="button" onClick={run}>自動逐層解碼</button><ErrorNotice message={error} />{result && <div className="layered-report"><div className="layered-report__summary"><strong>{result.steps.length} 層</strong><span>{result.reachedLimit ? "已達設定上限，請人工確認是否繼續。" : result.steps.length ? "已停止於無法安全辨識的格式。" : "未辨識到可安全自動解碼的格式。"}</span></div>{result.steps.length > 0 && <ol>{result.steps.map((step, index) => <li key={`${step.format}-${index}`}><span>{index + 1}</span><div><strong>{step.format}</strong><small>{step.beforeLength} → {step.afterLength} characters</small><code>{step.preview}</code></div></li>)}</ol>}<TextArea label="最終結果" value={result.final} onChange={(final) => setResult({ ...result, final })} rows={8} /><CopyButton value={result.final} /></div>}</div>;
 }
 
+function Ipv4CidrAggregatorTool() {
+  const [input, setInput] = useState("10.0.0.0/25\n10.0.0.128/25\n192.0.2.10\n192.0.2.10 # duplicate");
+  const [result, setResult] = useState<ReturnType<typeof aggregateIpv4Cidrs> | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setResult(aggregateIpv4Cidrs(input)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "IPv4 CIDR 合併失敗。 "); }
+  }
+  return <div className="single-workbench"><div className="warning-banner"><strong>只合併完全相同的位址集合</strong><span>不會為了縮短清單而納入原始輸入以外的 IP；單一位址會視為 /32。</span></div><TextArea label="IPv4／CIDR 清單" value={input} onChange={setInput} placeholder={"10.0.0.0/25\n10.0.0.128/25\n192.0.2.10"} rows={12} /><button className="primary-button" type="button" onClick={run}>合併 CIDR 清單</button><ErrorNotice message={error} />{result && <div className="cidr-aggregate-report"><div className="stat-grid"><div><span>INPUT</span><strong>{result.inputCount}</strong></div><div><span>OUTPUT</span><strong>{result.outputCount}</strong></div><div><span>REDUCED</span><strong>{result.removedCount}</strong></div><div><span>ADDRESSES</span><strong>{result.totalAddresses}</strong></div></div><div className="result-block"><span>MINIMAL CIDR SET</span><code>{result.cidrs.join("\n")}</code></div><CopyButton value={result.cidrs.join("\n")} label="複製 CIDR 清單" /></div>}</div>;
+}
+
+function DnsMessageDecoderTool() {
+  const [encoding, setEncoding] = useState<"hex" | "base64">("hex");
+  const [input, setInput] = useState("12348180000100010000000003777777076578616d706c6503636f6d0000010001c00c000100010000012c00045db8d822");
+  const [result, setResult] = useState<ReturnType<typeof decodeDnsMessage> | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setResult(decodeDnsMessage(input, encoding)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "DNS message 解析失敗。 "); }
+  }
+  return <div className="single-workbench"><div className="warning-banner"><strong>離線解析，不會送出 DNS Query</strong><span>最多解析 65,535 bytes、500 個 Section entries，並限制 compression pointer 跳轉次數。</span></div><label className="field field--short"><span>輸入格式</span><select value={encoding} onChange={(event) => { setEncoding(event.target.value as "hex" | "base64"); setResult(null); }}><option value="hex">Hex bytes</option><option value="base64">Base64</option></select></label><TextArea label="DNS Wire Message" value={input} onChange={setInput} placeholder="12 34 81 80 00 01 ..." rows={11} /><button className="primary-button" type="button" onClick={run}>解碼 DNS 封包</button><ErrorNotice message={error} />{result && <div className="dns-report"><div className="stat-grid"><div><span>TRANSACTION ID</span><strong>{result.id}</strong></div><div><span>TYPE</span><strong>{result.kind}</strong></div><div><span>RCODE</span><strong>{result.rcode}</strong></div><div><span>BYTES</span><strong>{result.byteLength}</strong></div></div><div className="dns-flags"><span>FLAGS</span><code>{result.flags.join(" ") || "none"}</code><small>Opcode {result.opcode}{result.trailingBytes ? ` · ${result.trailingBytes} trailing bytes` : ""}</small></div>{result.questions.length > 0 && <section className="dns-record-section"><div><strong>QUESTION</strong><span>{result.questions.length} RECORDS</span></div><ol>{result.questions.map((question, index) => <li key={`${question.name}-${index}`}><code>{question.name}</code><strong>{question.type}</strong><span>{question.className}</span></li>)}</ol></section>}<DnsRecordList title="ANSWER" records={result.answers} /><DnsRecordList title="AUTHORITY" records={result.authority} /><DnsRecordList title="ADDITIONAL" records={result.additional} /></div>}</div>;
+}
+
+function PathTraversalAnalyzerTool() {
+  const [input, setInput] = useState("..%252f..%252fetc%252fpasswd%00.jpg");
+  const [layers, setLayers] = useState(3);
+  const [result, setResult] = useState<ReturnType<typeof analyzePathTraversal> | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setResult(analyzePathTraversal(input, layers)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "路徑分析失敗。 "); }
+  }
+  return <div className="single-workbench"><div className="warning-banner"><strong>只做詞法正規化，不讀取任何檔案</strong><span>結果用於辨識 canonicalization 差異；實際是否可利用仍取決於應用程式、作業系統與檔案權限。</span></div><TextArea label="URL／檔案路徑" value={input} onChange={setInput} placeholder="..%252f..%252fetc%252fpasswd" rows={8} /><label className="field field--short"><span>最多 URL 解碼層數</span><select value={layers} onChange={(event) => setLayers(Number(event.target.value))}>{[0,1,2,3,4,5].map((value) => <option key={value} value={value}>{value} layers</option>)}</select></label><button className="primary-button" type="button" onClick={run}>分析 Path Traversal</button><ErrorNotice message={error} />{result && <div className="path-report"><div className={`file-verdict ${result.risk === "高" ? "is-mismatch" : ""}`}><span>RISK LEVEL</span><strong>{result.risk}風險</strong></div><div className="stat-grid"><div><span>DECODE LAYERS</span><strong>{result.decodeSteps.length}</strong></div><div><span>TRAVERSAL</span><strong>{result.traversalSegments}</strong></div><div><span>ESCAPES ROOT</span><strong>{result.escapesRoot}</strong></div><div><span>FINDINGS</span><strong>{result.findings.length}</strong></div></div>{result.findings.length > 0 ? <div className="warning-list"><strong>分析結果</strong><ul>{result.findings.map((finding) => <li key={finding}>{finding}</li>)}</ul></div> : <p className="safe-note">未發現明顯的 traversal 或路徑解析風險訊號。</p>}{result.decodeSteps.length > 0 && <div className="path-decode-steps"><strong>PERCENT DECODING</strong><ol>{result.decodeSteps.map((step) => <li key={step.layer}><span>LAYER {step.layer}</span><code>{step.value}</code></li>)}</ol></div>}<div className="result-block"><span>LEXICALLY NORMALIZED PATH</span><code>{result.normalizedDisplay}</code></div><CopyButton value={result.normalized} label="複製正規化路徑" /></div>}</div>;
+}
+
 export function ToolWorkbench({ slug }: { slug: string }) {
   switch (slug) {
     case "base64-codec": return <CodecTool mode="base64" />;
@@ -489,6 +533,9 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "ipv6-cidr-calculator": return <Ipv6CidrTool />;
     case "http-message-parser": return <HttpMessageTool />;
     case "layered-decoder": return <LayeredDecoderTool />;
+    case "ipv4-cidr-aggregator": return <Ipv4CidrAggregatorTool />;
+    case "dns-message-decoder": return <DnsMessageDecoderTool />;
+    case "path-traversal-analyzer": return <PathTraversalAnalyzerTool />;
     default: return null;
   }
 }

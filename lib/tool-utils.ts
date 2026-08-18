@@ -873,3 +873,254 @@ export function decodeLayered(value: string, maxLayers = 8) {
   }
   return { final: current, steps, reachedLimit: steps.length === maxLayers };
 }
+
+function rangeToIpv4Cidrs(startValue: number, endValue: number) {
+  let start = BigInt(startValue);
+  const end = BigInt(endValue);
+  const cidrs: string[] = [];
+  while (start <= end) {
+    const alignedBlock = start === 0n ? 1n << 32n : start & -start;
+    const remaining = end - start + 1n;
+    let block = alignedBlock;
+    while (block > remaining) block >>= 1n;
+    const prefix = 32 - Math.log2(Number(block));
+    cidrs.push(`${numberToIpv4(Number(start))}/${prefix}`);
+    start += block;
+  }
+  return cidrs;
+}
+
+export function aggregateIpv4Cidrs(value: string) {
+  assertSafeInput(value);
+  const tokens = value.split(/\r?\n/)
+    .flatMap((line) => line.replace(/#.*$/, "").split(/[\s,]+/))
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!tokens.length) throw new Error("請輸入至少一個 IPv4 位址或 CIDR 網段。 ");
+  if (tokens.length > 10_000) throw new Error("單次最多處理 10,000 個 IPv4 網段。 ");
+
+  const ranges = tokens.map((token) => {
+    const slash = token.indexOf("/");
+    const ipText = slash >= 0 ? token.slice(0, slash) : token;
+    const prefixText = slash >= 0 ? token.slice(slash + 1) : "32";
+    if (!/^\d{1,2}$/.test(prefixText)) throw new Error(`CIDR prefix 無效：${token}`);
+    const prefix = Number(prefixText);
+    if (prefix < 0 || prefix > 32) throw new Error(`CIDR prefix 必須介於 0 到 32：${token}`);
+    const ip = ipv4ToNumber(ipText);
+    const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+    const start = (ip & mask) >>> 0;
+    const end = (start | (~mask >>> 0)) >>> 0;
+    return { start, end };
+  }).sort((left, right) => left.start - right.start || left.end - right.end);
+
+  const merged: Array<{ start: number; end: number }> = [];
+  for (const range of ranges) {
+    const previous = merged.at(-1);
+    if (previous && range.start <= previous.end + 1) previous.end = Math.max(previous.end, range.end);
+    else merged.push({ ...range });
+  }
+  const cidrs = merged.flatMap((range) => rangeToIpv4Cidrs(range.start, range.end));
+  const totalAddresses = merged.reduce((total, range) => total + BigInt(range.end) - BigInt(range.start) + 1n, 0n);
+  return {
+    inputCount: tokens.length,
+    rangeCount: merged.length,
+    outputCount: cidrs.length,
+    removedCount: tokens.length - cidrs.length,
+    totalAddresses: totalAddresses.toString(),
+    cidrs,
+  };
+}
+
+export type DnsRecord = { name: string; type: string; className: string; ttl: number; data: string };
+
+export function decodeDnsMessage(value: string, encoding: "hex" | "base64" = "hex") {
+  assertSafeInput(value);
+  let bytes: Uint8Array;
+  if (encoding === "hex") {
+    const compact = value.replace(/(?:0x|\\x)/gi, "").replace(/[\s:,-]/g, "");
+    if (!compact || compact.length % 2 || !/^[a-f0-9]+$/i.test(compact)) throw new Error("Hex DNS 封包必須由完整的十六進位 bytes 組成。 ");
+    bytes = hexToBytes(compact);
+  } else {
+    const compact = value.replace(/\s/g, "");
+    if (!compact || compact.length % 4 === 1 || !/^[A-Za-z0-9+/_-]+={0,2}$/.test(compact)) throw new Error("Base64 DNS 封包格式無效。 ");
+    try {
+      const standard = compact.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(compact.length / 4) * 4, "=");
+      bytes = Uint8Array.from(atob(standard), (character) => character.charCodeAt(0));
+    } catch { throw new Error("Base64 DNS 封包無法解碼。 "); }
+  }
+  if (bytes.length < 12) throw new Error("DNS message 至少需要 12-byte Header。 ");
+  if (bytes.length > 65_535) throw new Error("DNS message 超過 65,535 bytes 安全上限。 ");
+  const need = (offset: number, length: number) => {
+    if (offset < 0 || offset + length > bytes.length) throw new Error("DNS 封包在欄位結束前已截斷。 ");
+  };
+  const u16 = (offset: number) => { need(offset, 2); return (bytes[offset] << 8) | bytes[offset + 1]; };
+  const u32 = (offset: number) => { need(offset, 4); return bytes[offset] * 0x1000000 + bytes[offset + 1] * 0x10000 + bytes[offset + 2] * 0x100 + bytes[offset + 3]; };
+  const readName = (initialOffset: number) => {
+    let offset = initialOffset;
+    let nextOffset = initialOffset;
+    let jumped = false;
+    let jumps = 0;
+    const labels: string[] = [];
+    const seen = new Set<number>();
+    while (true) {
+      need(offset, 1);
+      const length = bytes[offset];
+      if ((length & 0xc0) === 0xc0) {
+        need(offset, 2);
+        const pointer = ((length & 0x3f) << 8) | bytes[offset + 1];
+        if (pointer >= bytes.length || seen.has(pointer) || jumps >= 32) throw new Error("DNS name compression pointer 無效或形成迴圈。 ");
+        seen.add(pointer);
+        if (!jumped) nextOffset = offset + 2;
+        jumped = true;
+        jumps += 1;
+        offset = pointer;
+        continue;
+      }
+      if (length & 0xc0) throw new Error("DNS label 使用了不支援的長度標記。 ");
+      offset += 1;
+      if (!length) {
+        if (!jumped) nextOffset = offset;
+        break;
+      }
+      if (length > 63) throw new Error("DNS label 長度超過 63 bytes。 ");
+      need(offset, length);
+      labels.push(Array.from(bytes.subarray(offset, offset + length), (byte) => byte >= 0x21 && byte <= 0x7e ? String.fromCharCode(byte) : `\\x${byte.toString(16).padStart(2, "0")}`).join(""));
+      offset += length;
+      if (!jumped) nextOffset = offset;
+      if (labels.join(".").length > 253) throw new Error("DNS name 長度超過 253 characters。 ");
+    }
+    return { name: labels.length ? labels.join(".") : ".", nextOffset };
+  };
+
+  const typeNames: Record<number, string> = { 1: "A", 2: "NS", 5: "CNAME", 6: "SOA", 12: "PTR", 15: "MX", 16: "TXT", 28: "AAAA", 33: "SRV", 41: "OPT", 255: "ANY" };
+  const classNames: Record<number, string> = { 1: "IN", 3: "CH", 4: "HS", 255: "ANY" };
+  const id = u16(0);
+  const flagsValue = u16(2);
+  const counts = { questions: u16(4), answers: u16(6), authority: u16(8), additional: u16(10) };
+  const recordTotal = counts.questions + counts.answers + counts.authority + counts.additional;
+  if (recordTotal > 500) throw new Error("DNS section 總筆數超過 500 筆安全上限。 ");
+  let offset = 12;
+  const questions: Array<{ name: string; type: string; className: string }> = [];
+  for (let index = 0; index < counts.questions; index += 1) {
+    const decoded = readName(offset);
+    offset = decoded.nextOffset;
+    const type = u16(offset);
+    const classCode = u16(offset + 2);
+    offset += 4;
+    questions.push({ name: decoded.name, type: typeNames[type] ?? `TYPE${type}`, className: classNames[classCode] ?? `CLASS${classCode}` });
+  }
+  const readRecord = (): DnsRecord => {
+    const decoded = readName(offset);
+    offset = decoded.nextOffset;
+    const typeCode = u16(offset);
+    const classCode = u16(offset + 2);
+    const ttl = u32(offset + 4);
+    const dataLength = u16(offset + 8);
+    const dataOffset = offset + 10;
+    const dataEnd = dataOffset + dataLength;
+    need(dataOffset, dataLength);
+    const readRdataName = (nameOffset: number) => {
+      const name = readName(nameOffset);
+      if (name.nextOffset > dataEnd) throw new Error("DNS compressed name 超出目前 RDATA 邊界。 ");
+      return name.name;
+    };
+    let data = "";
+    if (typeCode === 1 && dataLength === 4) data = Array.from(bytes.subarray(dataOffset, dataEnd)).join(".");
+    else if (typeCode === 28 && dataLength === 16) data = bigintToIpv6(BigInt(`0x${Array.from(bytes.subarray(dataOffset, dataEnd), (byte) => byte.toString(16).padStart(2, "0")).join("")}`)).normalized;
+    else if ([2, 5, 12].includes(typeCode)) data = readRdataName(dataOffset);
+    else if (typeCode === 15 && dataLength >= 3) data = `${u16(dataOffset)} ${readRdataName(dataOffset + 2)}`;
+    else if (typeCode === 16) {
+      const chunks: string[] = [];
+      let cursor = dataOffset;
+      while (cursor < dataEnd) {
+        const length = bytes[cursor++];
+        if (cursor + length > dataEnd) throw new Error("DNS TXT record 長度超出 RDATA。 ");
+        chunks.push(new TextDecoder().decode(bytes.subarray(cursor, cursor + length)));
+        cursor += length;
+      }
+      data = chunks.map((chunk) => JSON.stringify(chunk)).join(" ");
+    } else data = Array.from(bytes.subarray(dataOffset, dataEnd), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    offset = dataEnd;
+    return { name: decoded.name, type: typeNames[typeCode] ?? `TYPE${typeCode}`, className: classNames[classCode] ?? `CLASS${classCode}`, ttl, data };
+  };
+  const readRecords = (count: number) => Array.from({ length: count }, () => readRecord());
+  const answers = readRecords(counts.answers);
+  const authority = readRecords(counts.authority);
+  const additional = readRecords(counts.additional);
+  const flagNames = [
+    [0x8000, "QR"], [0x0400, "AA"], [0x0200, "TC"], [0x0100, "RD"], [0x0080, "RA"], [0x0020, "AD"], [0x0010, "CD"],
+  ] as const;
+  const rcodes: Record<number, string> = { 0: "NOERROR", 1: "FORMERR", 2: "SERVFAIL", 3: "NXDOMAIN", 4: "NOTIMP", 5: "REFUSED" };
+  const rcodeValue = flagsValue & 0x0f;
+  return {
+    id: `0x${id.toString(16).padStart(4, "0")}`,
+    kind: flagsValue & 0x8000 ? "Response" : "Query",
+    opcode: (flagsValue >> 11) & 0x0f,
+    flags: flagNames.filter(([mask]) => flagsValue & mask).map(([, name]) => name),
+    rcode: rcodes[rcodeValue] ?? `RCODE${rcodeValue}`,
+    counts,
+    questions,
+    answers,
+    authority,
+    additional,
+    trailingBytes: bytes.length - offset,
+    byteLength: bytes.length,
+  };
+}
+
+export function analyzePathTraversal(value: string, maxDecodeLayers = 3) {
+  assertSafeInput(value);
+  if (!value.trim()) throw new Error("請輸入要分析的路徑。 ");
+  if (!Number.isInteger(maxDecodeLayers) || maxDecodeLayers < 0 || maxDecodeLayers > 5) throw new Error("URL 解碼層數必須介於 0 到 5。 ");
+  const original = value.trim();
+  const decodeSteps: Array<{ layer: number; value: string }> = [];
+  let decoded = original;
+  let decodeError = false;
+  for (let layer = 1; layer <= maxDecodeLayers && /%[a-f0-9]{2}/i.test(decoded); layer += 1) {
+    try {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) break;
+      decoded = next;
+      decodeSteps.push({ layer, value: decoded.replace(/\0/g, "\\0") });
+    } catch { decodeError = true; break; }
+  }
+  const pathOnly = decoded.split(/[?#]/, 1)[0];
+  const windowsDrive = pathOnly.match(/^[a-z]:/i)?.[0] ?? "";
+  const withoutDrive = windowsDrive ? pathOnly.slice(windowsDrive.length) : pathOnly;
+  const absolute = /^[\\/]/.test(withoutDrive) || /^\\\\/.test(pathOnly);
+  const slashNormalized = withoutDrive.replace(/\\/g, "/");
+  const outputSegments: string[] = [];
+  let traversalSegments = 0;
+  let escapesRoot = 0;
+  for (const segment of slashNormalized.split("/")) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") {
+      traversalSegments += 1;
+      if (outputSegments.length && outputSegments.at(-1) !== "..") outputSegments.pop();
+      else { outputSegments.push(".."); escapesRoot += 1; }
+    } else outputSegments.push(segment);
+  }
+  const normalized = `${windowsDrive}${absolute ? "/" : ""}${outputSegments.join("/")}` || (absolute ? "/" : ".");
+  const findings: string[] = [];
+  if (traversalSegments) findings.push(`發現 ${traversalSegments} 個上層目錄（..）片段。`);
+  if (escapesRoot) findings.push(`正規化後仍有 ${escapesRoot} 層嘗試越過起始目錄。`);
+  if (/%(?:2e|2f|5c)/i.test(original)) findings.push("原始輸入包含 URL encoded dot 或路徑分隔符。 ");
+  if (/%25(?:2e|2f|5c|00)/i.test(original)) findings.push("原始輸入疑似包含 double encoding。 ");
+  if (original.includes("\\") && original.includes("/")) findings.push("同時使用正斜線與反斜線，可能利用解析器差異。 ");
+  if (/\0|%00/i.test(decoded) || /%00/i.test(original)) findings.push("包含 null byte，舊式或非預期解析器可能提早截斷路徑。 ");
+  if (absolute || windowsDrive) findings.push("輸入是絕對路徑或含 Windows drive。 ");
+  if (decodeError) findings.push("部分 percent encoding 不是有效 UTF-8，已停止自動解碼。 ");
+  const highSignals = Number(escapesRoot > 0) + Number(/\0|%00/i.test(decoded)) + Number(/%25(?:2e|2f|5c|00)/i.test(original));
+  const risk = highSignals >= 2 || (traversalSegments > 0 && highSignals > 0) ? "高" : traversalSegments || absolute || findings.length ? "中" : "低";
+  return {
+    original,
+    decoded,
+    normalized,
+    normalizedDisplay: normalized.replace(/\0/g, "\\0").replace(/[\x01-\x1f\x7f]/g, (character) => `\\x${character.charCodeAt(0).toString(16).padStart(2, "0")}`),
+    traversalSegments,
+    escapesRoot,
+    decodeSteps,
+    findings,
+    risk,
+  };
+}

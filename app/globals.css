@@ -327,6 +327,31 @@ kbd { border: 1px solid #d7d9d8; border-bottom-width: 2px; border-radius: 4px; p
 .layered-report li strong { font-size: 11px; }
 .layered-report li small { color: var(--muted); font: 9px var(--mono); }
 .layered-report li code { color: var(--blue); font: 10px/1.55 var(--mono); overflow-wrap: anywhere; white-space: pre-wrap; }
+.cidr-aggregate-report .stat-grid, .dns-report .stat-grid, .path-report .stat-grid { grid-template-columns: repeat(4, 1fr); }
+.cidr-aggregate-report .result-block code { white-space: pre-wrap; max-height: 420px; overflow: auto; }
+.cidr-aggregate-report .secondary-button, .path-report .secondary-button { margin-top: 12px; }
+.dns-report { margin-top: 24px; }
+.dns-flags { display: flex; align-items: baseline; gap: 12px; padding: 13px 15px; background: var(--blue-soft); border: 1px solid #dce8e9; border-top: 0; }
+.dns-flags > span { color: var(--muted); font: 700 9px var(--mono); }
+.dns-flags code { color: var(--blue); font: 700 11px var(--mono); }
+.dns-flags small { margin-left: auto; color: var(--muted); font: 9px var(--mono); }
+.dns-record-section { margin-top: 14px; border: 1px solid var(--line); }
+.dns-record-section > div { display: flex; justify-content: space-between; padding: 11px 13px; background: #f4f5f4; border-bottom: 1px solid var(--line); }
+.dns-record-section > div strong { font-size: 10px; }
+.dns-record-section > div span { color: var(--muted); font: 9px var(--mono); }
+.dns-record-section ol { list-style: none; padding: 0; margin: 0; }
+.dns-record-section li { display: grid; grid-template-columns: minmax(140px, 1fr) 70px 110px minmax(160px, 1.2fr); gap: 10px; align-items: start; padding: 11px 13px; border-bottom: 1px solid #ededeb; }
+.dns-record-section li:last-child { border-bottom: 0; }
+.dns-record-section li code { font: 10px/1.55 var(--mono); overflow-wrap: anywhere; }
+.dns-record-section li strong { color: var(--orange); font: 700 10px var(--mono); }
+.dns-record-section li span { color: var(--muted); font: 9px/1.55 var(--mono); }
+.path-report { margin-top: 24px; }
+.path-decode-steps { margin-top: 16px; border: 1px solid var(--line); }
+.path-decode-steps > strong { display: block; padding: 11px 13px; background: #f4f5f4; font: 700 9px var(--mono); }
+.path-decode-steps ol { list-style: none; margin: 0; padding: 0; }
+.path-decode-steps li { display: grid; grid-template-columns: 80px 1fr; gap: 12px; padding: 10px 13px; border-top: 1px solid var(--line); }
+.path-decode-steps span { color: var(--orange); font: 700 9px var(--mono); }
+.path-decode-steps code { font: 10px/1.55 var(--mono); overflow-wrap: anywhere; }
 .caesar-list { border: 1px solid var(--line); max-height: 520px; overflow: auto; }
 .caesar-list > div { display: grid; grid-template-columns: 70px 1fr; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
 .caesar-list span { color: var(--orange); font: 700 9px var(--mono); }
@@ -398,6 +423,11 @@ kbd { border: 1px solid #d7d9d8; border-bottom-width: 2px; border-radius: 4px; p
   .secret-report li code { grid-column: 2; text-align: left; }
   .ctf-results { grid-template-columns: 1fr; }
   .http-parameter-grid { grid-template-columns: 1fr; }
+  .cidr-aggregate-report .stat-grid, .dns-report .stat-grid, .path-report .stat-grid { grid-template-columns: 1fr 1fr; }
+  .dns-flags { align-items: flex-start; flex-wrap: wrap; }
+  .dns-flags small { width: 100%; margin-left: 0; }
+  .dns-record-section li { grid-template-columns: minmax(0, 1fr) 60px; }
+  .dns-record-section li span, .dns-record-section li code:last-child { grid-column: 1 / -1; }
   .workbench { padding: 20px; }
   .tool-hero { padding-top: 24px; }
   .breadcrumbs { margin-bottom: 28px; }

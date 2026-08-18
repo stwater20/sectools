@@ -195,6 +195,22 @@ export const toolCatalog: ToolDefinition[] = [
     },
   },
   {
+    slug: "ipv4-cidr-aggregator",
+    name: "IPv4 CIDR 合併器",
+    englishName: "IPv4 CIDR Aggregator",
+    description: "合併重疊與相鄰的 IPv4 位址或 CIDR，輸出涵蓋相同範圍的最小網段清單。",
+    category: "網路與風險",
+    icon: "Σ/",
+    tags: ["ipv4", "cidr aggregation", "subnet", "firewall", "acl"],
+    featured: true,
+    status: "new",
+    guide: {
+      intro: "Firewall、ACL、SIEM 與 Threat Intel 清單常累積大量重疊網段。本工具會在本機將它們轉成精確、無額外放寬範圍的最小 IPv4 CIDR 集合。",
+      steps: ["每行貼上一個 IPv4 或 CIDR；單一 IP 會視為 /32，也支援逗號與 # 註解。", "執行後核對輸入筆數、實際涵蓋位址數與壓縮後的 CIDR 數量。", "複製結果到 Firewall、ACL 或 SIEM 前，仍應依設備語法與變更流程驗證。"],
+      useCases: ["整理防火牆 allowlist、blocklist 與雲端 Security Group 網段。", "將 Threat Intel IP 清單去重並壓縮，減少規則數量。", "確認相鄰的 /25、/26 等網段能否安全合併成較短 prefix。"],
+    },
+  },
+  {
     slug: "cvss-calculator",
     name: "CVSS v3.1 計算器",
     englishName: "CVSS v3.1 Calculator",
@@ -230,6 +246,22 @@ export const toolCatalog: ToolDefinition[] = [
       intro: "從 Burp Suite、Proxy、封包或 Log 複製的原始 HTTP 訊息常包含多層資料。本工具不會重送請求，只在本機拆解起始行、標頭與常見 Body 格式。",
       steps: ["貼上完整 Request 或 Response，保留起始行與 Headers。", "按下解析後檢查 Method／Status、Query、Cookies、Body parameters 與重複 Headers。", "依警告確認 Content-Length、Transfer-Encoding 或敏感 Authorization 欄位是否需要進一步調查。"],
       useCases: ["整理 Burp Suite、mitmproxy 或封包擷取中的 HTTP 訊息。", "分析 Web CTF 的 Query、Cookie、Form Body 與 Request Smuggling 線索。", "在不對目標主機發送任何請求的前提下檢查可疑流量。"],
+    },
+  },
+  {
+    slug: "dns-message-decoder",
+    name: "DNS 封包解碼器",
+    englishName: "DNS Wire Message Decoder",
+    description: "離線解析 Hex 或 Base64 DNS wire message，拆解 Header、Question、Answer 與常見 Resource Record。",
+    category: "網路與風險",
+    icon: "DNS",
+    tags: ["dns packet", "dns decoder", "pcap", "wireshark", "malware"],
+    featured: true,
+    status: "new",
+    guide: {
+      intro: "DNS 封包在 PCAP、EDR、惡意程式設定與 CTF 中常以原始 Hex 或 Base64 出現。本工具不會送出 DNS 查詢，只依 wire format 拆解本機輸入。",
+      steps: ["選擇 Hex 或 Base64，貼入從封包或紀錄擷取的完整 DNS message。", "解碼後檢查 Transaction ID、Flags、RCODE、Question 與各 Section 的 Resource Records。", "對照 TTL、A／AAAA／CNAME／MX／TXT 等資料；未知 Record 會保留為 Hex。"],
+      useCases: ["分析 Wireshark、Zeek、Suricata 或惡意程式擷取出的 DNS payload。", "辨識 DNS tunneling、可疑 TXT record 與 CNAME 跳轉線索。", "解答需要手動閱讀 DNS name compression 或 wire format 的 CTF 題目。"],
     },
   },
   {
@@ -342,6 +374,11 @@ export const toolCatalog: ToolDefinition[] = [
     intro: "惡意程式字串、釣魚連結與 CTF 題目常把 URL、Base64、Hex 或 Unicode 疊加多次。本工具會在安全上限內逐層辨識，並顯示每一步採用的格式。",
     steps: ["貼上疑似多層編碼的字串，選擇最多解碼層數。", "執行後逐步檢查格式判斷與長度變化，避免把正常文字誤判為編碼。", "複製最終純文字；若仍有其他格式，可改用對應的單一編解碼工具深入分析。"],
     useCases: ["拆解 URL encoding 包住 Base64 或 Hex 的 CTF payload。", "追蹤惡意 JavaScript、PowerShell 或釣魚內容的混淆層。", "以限深度、限輸出的方式分析未知字串，避免無限解碼。"],
+  } },
+  { slug: "path-traversal-analyzer", name: "Path Traversal 分析器", englishName: "Path Traversal Analyzer", description: "逐層還原 percent encoding、統一 Windows／POSIX 分隔符並標示上層目錄、null byte 與解析差異風險。", category: "CTF 工具", icon: "../", tags: ["path traversal", "directory traversal", "lfi", "url decode", "web ctf"], featured: true, status: "new", guide: {
+    intro: "Directory Traversal 與 LFI payload 常透過 double encoding、反斜線或 null byte 隱藏。本工具只做詞法分析，不會讀取檔案，也不會把輸入送到任何網站。",
+    steps: ["貼上 URL path、Windows 路徑或可疑參數值，選擇最多 percent decoding 層數。", "檢查每層解碼結果、正規化路徑與上層目錄片段，辨識不同解析器可能看到的內容。", "依風險提示回到應用程式驗證 canonicalization、base directory 與 allowlist 邏輯。"],
+    useCases: ["分析 Web Log、WAF 告警與 CTF 中的 ../、%2e%2e 或 double-encoded payload。", "比較 Windows 反斜線與 POSIX 正斜線混用造成的路徑解析差異。", "檢查 null byte、絕對路徑與越過起始目錄等 LFI 線索。"],
   } },
 ];
 
