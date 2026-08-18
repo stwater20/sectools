@@ -1,4 +1,4 @@
-export type ToolCategory = "編碼與雜湊" | "威脅分析" | "網路與風險" | "密碼與驗證";
+export type ToolCategory = "編碼與雜湊" | "威脅分析" | "網路與風險" | "密碼與驗證" | "鑑識與分析";
 
 export type ToolDefinition = {
   slug: string;
@@ -17,6 +17,7 @@ export const categories: Array<{ name: ToolCategory; label: string }> = [
   { name: "威脅分析", label: "THREAT INTEL" },
   { name: "網路與風險", label: "NETWORK" },
   { name: "密碼與驗證", label: "AUTH" },
+  { name: "鑑識與分析", label: "FORENSICS" },
 ];
 
 export const toolCatalog: ToolDefinition[] = [
@@ -147,6 +148,60 @@ export const toolCatalog: ToolDefinition[] = [
     category: "網路與風險",
     icon: "V",
     tags: ["cvss", "vulnerability", "risk", "cve"],
+    featured: true,
+    status: "new",
+  },
+  {
+    slug: "security-headers-analyzer",
+    name: "安全標頭分析器",
+    englishName: "Security Headers Analyzer",
+    description: "貼上 HTTP response headers，檢查 CSP、HSTS、Referrer-Policy 等防護與常見設定缺口。",
+    category: "網路與風險",
+    icon: "H:",
+    tags: ["security headers", "csp", "hsts", "http", "web security"],
+    featured: true,
+    status: "new",
+  },
+  {
+    slug: "email-header-analyzer",
+    name: "Email Header 分析器",
+    englishName: "Email Header Analyzer",
+    description: "解析郵件標頭、傳遞節點與 SPF、DKIM、DMARC 驗證結果，協助調查釣魚郵件。",
+    category: "威脅分析",
+    icon: "@",
+    tags: ["email", "header", "spf", "dkim", "dmarc", "phishing"],
+    featured: true,
+    status: "new",
+  },
+  {
+    slug: "file-signature-checker",
+    name: "檔案簽章辨識器",
+    englishName: "File Signature Checker",
+    description: "讀取本機檔案 Magic Bytes，辨識真實格式並比對副檔名，檔案內容不會上傳。",
+    category: "鑑識與分析",
+    icon: "0x",
+    tags: ["magic bytes", "file signature", "forensics", "malware", "檔案鑑識"],
+    featured: true,
+    status: "new",
+  },
+  {
+    slug: "string-extractor",
+    name: "檔案字串擷取器",
+    englishName: "String Extractor",
+    description: "從本機二進位檔擷取可列印 ASCII 字串，快速尋找 URL、路徑與可疑命令。",
+    category: "鑑識與分析",
+    icon: "Aa",
+    tags: ["strings", "binary", "forensics", "malware analysis", "ascii"],
+    featured: true,
+  },
+  {
+    slug: "timestamp-decoder",
+    name: "鑑識時間戳解碼器",
+    englishName: "Forensic Timestamp Decoder",
+    description: "解碼 Unix 秒／毫秒、Windows FILETIME 與 WebKit 時間，統一顯示 UTC 與台北時間。",
+    category: "鑑識與分析",
+    icon: "T",
+    tags: ["timestamp", "unix", "filetime", "webkit", "forensics"],
     featured: true,
     status: "new",
   },

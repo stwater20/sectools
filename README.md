@@ -8,6 +8,8 @@
 - 密碼與驗證：JWT Decoder、安全密碼產生器、密碼強度檢查
 - 威脅分析：IOC Extractor、URL Defang / Refang、Entropy Calculator
 - 網路與風險：IPv4 CIDR Calculator、CVSS v3.1 Calculator
+- 網站與郵件：Security Headers Analyzer、Email Header Analyzer
+- 鑑識與分析：File Signature Checker、String Extractor、Forensic Timestamp Decoder
 
 每個工具都有獨立靜態網址、SEO metadata、結構化資料與安全使用提醒。
 
@@ -35,6 +37,8 @@ Repo 已包含 `.github/workflows/deploy-pages.yml`。推送到 `main` 後：
 1. 在 GitHub repo 的 **Settings → Pages → Build and deployment** 選擇 **GitHub Actions**。
 2. Workflow 會自動判斷 user site（`owner.github.io`）或 project site（`owner.github.io/repo`）的 base path。
 3. 如使用自訂網域，將 `NEXT_PUBLIC_SITE_URL` 與 DNS 設定改為正式網址，並在 `public/` 加入 `CNAME`。
+
+目前正式網域設定為 `tools.sectools.tw`；自訂網域從網站根目錄提供內容，因此 GitHub Actions 會停用 `/sectools` base path，避免 CSS/JavaScript 資源路徑錯誤。
 
 ## 安全模型
 

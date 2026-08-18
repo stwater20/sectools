@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  analyzeEmailHeaders,
+  analyzeSecurityHeaders,
   base64ToUtf8,
   calculateCidr,
   calculateCvss,
   calculateEntropy,
+  decodeTimestamp,
   defang,
   extractIocs,
+  extractPrintableStrings,
+  identifyFileSignature,
   refang,
   utf8ToBase64,
 } from "../lib/tool-utils.ts";
@@ -49,4 +54,49 @@ test("IOC extraction de-duplicates common indicators", () => {
   assert.deepEqual(result.ips, ["8.8.8.8"]);
   assert.ok(result.domains.includes("bad.com"));
   assert.equal(result.hashes.length, 1);
+});
+
+test("security header analyzer rewards a hardened policy", () => {
+  const result = analyzeSecurityHeaders([
+    "Content-Security-Policy: default-src 'self'; frame-ancestors 'none'",
+    "Strict-Transport-Security: max-age=63072000; includeSubDomains",
+    "X-Content-Type-Options: nosniff",
+    "Referrer-Policy: strict-origin-when-cross-origin",
+    "Permissions-Policy: camera=(), microphone=()",
+    "Cross-Origin-Opener-Policy: same-origin",
+  ].join("\n"));
+  assert.equal(result.score, 100);
+  assert.ok(result.checks.every((check) => check.status === "pass"));
+});
+
+test("email header analyzer detects authentication and domain mismatch", () => {
+  const result = analyzeEmailHeaders([
+    "From: Security <alert@example.com>",
+    "Reply-To: attacker@evil.com",
+    "Return-Path: <bounce@example.com>",
+    "Message-ID: <123@example.com>",
+    "Authentication-Results: mx.example; spf=pass; dkim=pass; dmarc=fail",
+    "Received: from relay.example by mx.example",
+  ].join("\n"));
+  assert.equal(result.authentication.spf, "pass");
+  assert.equal(result.authentication.dmarc, "fail");
+  assert.ok(result.warnings.some((warning) => warning.includes("Reply-To")));
+  assert.equal(result.received.length, 1);
+});
+
+test("file signature checker recognizes PNG and extension mismatch", () => {
+  const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const result = identifyFileSignature(bytes, "invoice.pdf");
+  assert.equal(result.match?.mime, "image/png");
+  assert.equal(result.extensionMatches, false);
+});
+
+test("string extractor finds printable sequences", () => {
+  const bytes = new Uint8Array([0, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0, 0x78, 0x79]);
+  assert.deepEqual(extractPrintableStrings(bytes, 4), ["hello"]);
+});
+
+test("timestamp decoder handles Unix and Windows FILETIME", () => {
+  assert.equal(decodeTimestamp("0", "unix-seconds").toISOString(), "1970-01-01T00:00:00.000Z");
+  assert.equal(decodeTimestamp("116444736000000000", "filetime").toISOString(), "1970-01-01T00:00:00.000Z");
 });

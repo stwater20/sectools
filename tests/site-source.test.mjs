@@ -21,7 +21,12 @@ test("layout declares a restrictive local-first CSP", async () => {
 });
 
 test("GitHub Pages workflow runs the full quality gate", async () => {
-  const workflow = await readFile(new URL("../.github/workflows/deploy-pages.yml", import.meta.url), "utf8");
+  const [workflow, cname] = await Promise.all([
+    readFile(new URL("../.github/workflows/deploy-pages.yml", import.meta.url), "utf8"),
+    readFile(new URL("../public/CNAME", import.meta.url), "utf8"),
+  ]);
   assert.match(workflow, /npm run check/);
   assert.match(workflow, /actions\/deploy-pages@v4/);
+  assert.match(workflow, /CUSTOM_DOMAIN: tools\.sectools\.tw/);
+  assert.equal(cname.trim(), "tools.sectools.tw");
 });

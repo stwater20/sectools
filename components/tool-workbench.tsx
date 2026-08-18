@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import {
+  analyzeEmailHeaders,
+  analyzeSecurityHeaders,
   assertSafeInput,
   base64ToUtf8,
   bytesToBase64,
@@ -10,12 +12,16 @@ import {
   calculateCvss,
   calculateEntropy,
   decodeJwtPart,
+  decodeTimestamp,
   defang,
   estimatePassword,
   extractIocs,
+  extractPrintableStrings,
+  identifyFileSignature,
   refang,
   utf8ToBase64,
   type CvssMetrics,
+  type TimestampFormat,
 } from "@/lib/tool-utils";
 
 function CopyButton({ value, label = "複製結果" }: { value: string; label?: string }) {
@@ -204,6 +210,74 @@ function EntropyTool() {
   return <div className="single-workbench"><TextArea label="要分析的文字或 Hex dump" value={input} onChange={setInput} placeholder="貼上內容以即時計算 Shannon entropy…" rows={12} />{input && <div className="entropy-result"><div><strong>{result.bitsPerSymbol.toFixed(4)}</strong><span>bits / symbol</span></div><div><strong>{result.totalBits.toFixed(1)}</strong><span>估算總資訊量</span></div><div><strong>{result.uniqueSymbols}</strong><span>不同符號數</span></div><p>{assessment}</p></div>}</div>;
 }
 
+function SecurityHeadersTool() {
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState<ReturnType<typeof analyzeSecurityHeaders> | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setResult(analyzeSecurityHeaders(input)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "標頭解析失敗。 "); }
+  }
+  return <div className="single-workbench"><div className="warning-banner"><strong>貼上分析，不主動連線</strong><span>請從瀏覽器開發者工具、curl -I 或 Proxy 複製 response headers；本工具不會對目標網站發送請求。</span></div><TextArea label="HTTP Response Headers" value={input} onChange={setInput} placeholder={"HTTP/2 200\ncontent-security-policy: default-src 'self'\nstrict-transport-security: max-age=31536000"} rows={12} /><button className="primary-button" type="button" onClick={run}>分析安全標頭</button><ErrorNotice message={error} />{result && <div className="header-report"><div className="report-score"><strong>{result.score}</strong><span>/ 100</span><small>解析 {result.parsedCount} 個標頭</small></div><div className="check-list">{result.checks.map((check) => <div key={check.name} className={`check-item check-item--${check.status}`}><i>{check.status === "pass" ? "✓" : check.status === "warn" ? "!" : "×"}</i><div><strong>{check.name}</strong><p>{check.detail}</p></div></div>)}</div></div>}</div>;
+}
+
+function EmailHeaderTool() {
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState<ReturnType<typeof analyzeEmailHeaders> | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setResult(analyzeEmailHeaders(input)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "郵件標頭解析失敗。 "); }
+  }
+  const labels = { from: "From", replyTo: "Reply-To", returnPath: "Return-Path", subject: "Subject", date: "Date", messageId: "Message-ID" };
+  return <div className="single-workbench"><TextArea label="原始 Email Header" value={input} onChange={setInput} placeholder="貼上郵件的原始標頭（不需要郵件內文）…" rows={14} /><button className="primary-button" type="button" onClick={run}>分析郵件標頭</button><ErrorNotice message={error} />{result && <div className="email-report"><div className="auth-row">{Object.entries(result.authentication).map(([name,status]) => <div key={name} className={`auth-chip auth-chip--${status}`}><span>{name.toUpperCase()}</span><strong>{status}</strong></div>)}</div>{result.warnings.length > 0 && <div className="warning-list"><strong>需要注意</strong><ul>{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}<div className="email-summary">{Object.entries(result.summary).map(([key,value]) => <div key={key}><span>{labels[key as keyof typeof labels]}</span><code>{value || "—"}</code></div>)}</div><details className="received-chain"><summary>傳遞節點 Received（{result.received.length}）</summary><ol>{result.received.map((hop,index) => <li key={`${hop}-${index}`}><code>{hop}</code></li>)}</ol></details></div>}</div>;
+}
+
+function FileDropField({ onFile, accept }: { onFile: (file: File) => void; accept?: string }) {
+  return <label className="file-drop"><input type="file" accept={accept} onChange={(event) => { const file = event.target.files?.[0]; if (file) onFile(file); }} /><span className="file-drop__icon">＋</span><strong>選擇本機檔案</strong><small>只在瀏覽器讀取，不會上傳 · 上限 10 MB</small></label>;
+}
+
+function FileSignatureTool() {
+  const [result, setResult] = useState<(ReturnType<typeof identifyFileSignature> & { name: string; size: number; browserType: string }) | null>(null);
+  const [error, setError] = useState("");
+  async function inspect(file: File) {
+    try {
+      if (file.size > 10_000_000) throw new Error("檔案超過 10 MB 上限。 ");
+      const bytes = new Uint8Array(await file.slice(0, 64).arrayBuffer());
+      setResult({ ...identifyFileSignature(bytes, file.name), name: file.name, size: file.size, browserType: file.type || "未知" }); setError("");
+    } catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "檔案讀取失敗。 "); }
+  }
+  return <div className="single-workbench"><FileDropField onFile={inspect} /><ErrorNotice message={error} />{result && <div className="file-report"><div className={`file-verdict ${result.extensionMatches === false ? "is-mismatch" : ""}`}><span>{result.match ? "辨識結果" : "未知格式"}</span><strong>{result.match?.label ?? "Magic Bytes 不在目前資料庫"}</strong>{result.extensionMatches === false && <p>警告：檔案內容與 .{result.extension} 副檔名不一致。</p>}</div><div className="stat-grid"><div><span>檔名</span><strong>{result.name}</strong></div><div><span>大小</span><strong>{result.size.toLocaleString()} bytes</strong></div><div><span>瀏覽器 MIME</span><strong>{result.browserType}</strong></div><div><span>Magic MIME</span><strong>{result.match?.mime ?? "Unknown"}</strong></div><div><span>常見副檔名</span><strong>{result.match?.extensions.join(", ") ?? "—"}</strong></div></div><div className="result-block"><span>前 32 bytes</span><code>{result.hexPreview}</code></div></div>}</div>;
+}
+
+function StringExtractorTool() {
+  const [minimum, setMinimum] = useState(5);
+  const [filename, setFilename] = useState("");
+  const [strings, setStrings] = useState<string[]>([]);
+  const [error, setError] = useState("");
+  async function inspect(file: File) {
+    try {
+      if (file.size > 10_000_000) throw new Error("檔案超過 10 MB 上限。 ");
+      const result = extractPrintableStrings(new Uint8Array(await file.arrayBuffer()), minimum);
+      setFilename(file.name); setStrings(result); setError("");
+    } catch (cause) { setFilename(""); setStrings([]); setError(cause instanceof Error ? cause.message : "檔案讀取失敗。 "); }
+  }
+  return <div className="single-workbench"><label className="field field--short"><span>最短字串長度</span><select value={minimum} onChange={(event) => setMinimum(Number(event.target.value))}>{[4,5,6,8,10,12].map((value) => <option key={value} value={value}>{value} characters</option>)}</select></label><FileDropField onFile={inspect} /><ErrorNotice message={error} />{filename && <div className="strings-report"><div className="strings-report__head"><div><strong>{filename}</strong><span>{strings.length} 個字串{strings.length === 2000 ? "（已達顯示上限）" : ""}</span></div><CopyButton value={strings.join("\n")} label="複製全部" /></div>{strings.length ? <ol>{strings.map((value,index) => <li key={`${value}-${index}`}><span>{index + 1}</span><code>{value}</code></li>)}</ol> : <p>沒有找到符合長度的可列印 ASCII 字串。</p>}</div>}</div>;
+}
+
+function TimestampTool() {
+  const [value, setValue] = useState("");
+  const [format, setFormat] = useState<TimestampFormat>("unix-seconds");
+  const [date, setDate] = useState<Date | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setDate(decodeTimestamp(value, format)); setError(""); }
+    catch (cause) { setDate(null); setError(cause instanceof Error ? cause.message : "時間戳解析失敗。 "); }
+  }
+  const labels: Record<TimestampFormat, string> = { "unix-seconds": "Unix seconds", "unix-milliseconds": "Unix milliseconds", filetime: "Windows FILETIME (100ns since 1601)", webkit: "WebKit / Chrome (μs since 1601)" };
+  return <div className="single-workbench"><div className="workbench-grid"><label className="field"><span>時間戳整數</span><input value={value} onChange={(event) => setValue(event.target.value)} placeholder="例如 1723948800" inputMode="numeric" /></label><label className="field"><span>格式</span><select value={format} onChange={(event) => setFormat(event.target.value as TimestampFormat)}>{Object.entries(labels).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label></div><button className="primary-button" type="button" onClick={run}>解碼時間</button><ErrorNotice message={error} />{date && <div className="timestamp-results"><div><span>ISO 8601 / UTC</span><code>{date.toISOString()}</code></div><div><span>台北時間 Asia/Taipei</span><code>{date.toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}</code></div><div><span>瀏覽器本地時間</span><code>{date.toString()}</code></div></div>}</div>;
+}
+
 export function ToolWorkbench({ slug }: { slug: string }) {
   switch (slug) {
     case "base64-codec": return <CodecTool mode="base64" />;
@@ -219,6 +293,11 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "cidr-calculator": return <CidrTool />;
     case "cvss-calculator": return <CvssTool />;
     case "entropy-calculator": return <EntropyTool />;
+    case "security-headers-analyzer": return <SecurityHeadersTool />;
+    case "email-header-analyzer": return <EmailHeaderTool />;
+    case "file-signature-checker": return <FileSignatureTool />;
+    case "string-extractor": return <StringExtractorTool />;
+    case "timestamp-decoder": return <TimestampTool />;
     default: return null;
   }
 }
