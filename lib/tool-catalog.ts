@@ -10,6 +10,11 @@ export type ToolDefinition = {
   tags: string[];
   featured?: boolean;
   status?: "new" | "popular";
+  guide?: {
+    intro: string;
+    steps: [string, string, string];
+    useCases: [string, string, string];
+  };
 };
 
 export const categories: Array<{ name: ToolCategory; label: string }> = [
@@ -111,6 +116,11 @@ export const toolCatalog: ToolDefinition[] = [
     tags: ["totp", "hotp", "mfa", "2fa", "rfc 6238"],
     featured: true,
     status: "new",
+    guide: {
+      intro: "TOTP 與 HOTP 是雙因素驗證常見的一次性密碼標準。本工具可離線重現 Authenticator 驗證碼，用來測試 MFA 串接、CTF 題目或核對伺服器實作。",
+      steps: ["貼上服務提供的 Base32 Secret，選擇時間型 TOTP 或 Counter 型 HOTP。", "依服務端設定選擇驗證碼位數、HMAC 演算法與週期或 Counter。", "產生驗證碼後立即核對；TOTP 會隨時間週期失效，HOTP 使用後應遞增 Counter。"],
+      useCases: ["測試 RFC 4226 HOTP 與 RFC 6238 TOTP 實作是否一致。", "排查 MFA、2FA 或 Authenticator 因時間偏差造成的驗證失敗。", "解答需要一次性密碼、Base32 或 HMAC 的資安與 CTF 題目。"],
+    },
   },
   {
     slug: "ioc-extractor",
@@ -162,6 +172,11 @@ export const toolCatalog: ToolDefinition[] = [
     tags: ["ipv4", "ipv6", "hex", "reverse dns", "network"],
     featured: true,
     status: "new",
+    guide: {
+      intro: "IP 位址在封包、Log、DNS 與 CTF 題目中常以不同格式出現。本工具同時處理 IPv4 與 IPv6，協助確認同一位址的正規化、整數與十六進位表示。",
+      steps: ["輸入一個 IPv4 或 IPv6 位址；IPv6 可使用 :: 壓縮，也可保留成對方括號。", "按下解析與轉換，檢查正規化、完整展開、Decimal、Hex 與 Binary 結果。", "需要 PTR 查詢名稱時，複製產生的 in-addr.arpa 或 ip6.arpa Reverse DNS 名稱。"],
+      useCases: ["正規化 SOC、Firewall、Proxy 與 Web Log 裡的 IPv6 位址。", "在惡意程式分析或 CTF 中轉換 IPv4 整數、Hex 與 Binary。", "產生 IPv4／IPv6 的 Reverse DNS PTR 查詢名稱。"],
+    },
   },
   {
     slug: "cvss-calculator",
@@ -286,7 +301,11 @@ export const toolCatalog: ToolDefinition[] = [
   { slug: "base-ascii-converter", name: "進位與 ASCII 轉換器", englishName: "Number Base & ASCII Converter", description: "在 Binary、Octal、Decimal、Hex 與 ASCII bytes 間轉換，支援空白分隔輸入。", category: "CTF 工具", icon: "0b", tags: ["binary", "hex", "ascii", "base", "ctf"], featured: true, status: "new" },
   { slug: "integer-packer", name: "整數 Pack／Unpack", englishName: "Integer Packing Tool", description: "將整數轉成 p16、p32、p64 的 Little／Big Endian bytes，或從 Hex 還原數值。", category: "CTF 工具", icon: "p64", tags: ["pwn", "pack", "unpack", "endian", "ctf"], featured: true, status: "new" },
   { slug: "rsa-math-helper", name: "RSA 數學助手", englishName: "RSA Math Helper", description: "計算 GCD、模反元素與快速模冪，協助 CTF RSA 題目的基礎數論運算。", category: "CTF 工具", icon: "RSA", tags: ["rsa", "gcd", "modular inverse", "powmod", "crypto"], featured: true, status: "new" },
-  { slug: "unicode-escape-codec", name: "Unicode／跳脫序列工具", englishName: "Unicode Escape Codec", description: "安全編解碼 JavaScript escape、Unicode code point 與 HTML numeric entity，不執行輸入內容。", category: "CTF 工具", icon: "U+", tags: ["unicode", "escape", "javascript", "html entity", "ctf"], featured: true, status: "new" },
+  { slug: "unicode-escape-codec", name: "Unicode／跳脫序列工具", englishName: "Unicode Escape Codec", description: "安全編解碼 JavaScript escape、Unicode code point 與 HTML numeric entity，不執行輸入內容。", category: "CTF 工具", icon: "U+", tags: ["unicode", "escape", "javascript", "html entity", "ctf"], featured: true, status: "new", guide: {
+    intro: "Unicode 與跳脫序列常被用在 JavaScript、HTML、XSS payload、惡意程式設定與 CTF 題目。本工具只把編碼還原成純文字，不會執行腳本或解析 HTML 標籤。",
+    steps: ["選擇 JavaScript escape、Unicode code point 或 HTML numeric entity 格式。", "貼上要分析的跳脫序列並按解碼；也可貼入一般文字反向編碼。", "以純文字檢查結果，必要時搭配 URL Codec 或 Base64 工具繼續分層解碼。"],
+    useCases: ["還原 \\u、\\x 與 \\u{...} 混淆的 JavaScript 字串。", "轉換 U+XXXX Unicode code point，辨識同形字與特殊字元。", "分析 HTML numeric entity 編碼的 XSS payload 或釣魚內容。"],
+  } },
 ];
 
 export function findTool(slug: string) {

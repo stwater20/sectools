@@ -25,6 +25,16 @@ test("layout declares a restrictive local-first CSP", async () => {
   assert.doesNotMatch(layout, /https:\/\/fonts\./);
 });
 
+test("tool pages include Traditional Chinese SEO metadata and indexable guidance", async () => {
+  const page = await readFile(new URL("../app/tools/[slug]/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /keywords:/);
+  assert.match(page, /如何使用 \{tool\.name\}/);
+  assert.match(page, /常見用途/);
+  assert.match(page, /FAQPage/);
+  assert.match(page, /BreadcrumbList/);
+  assert.match(page, /zh-Hant-TW/);
+});
+
 test("GitHub Pages workflow runs the full quality gate", async () => {
   const [workflow, cname] = await Promise.all([
     readFile(new URL("../.github/workflows/deploy-pages.yml", import.meta.url), "utf8"),

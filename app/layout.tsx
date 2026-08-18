@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     template: "%s｜SecTools.tw Toolkit",
   },
   description:
-    "給資安工程師、SOC 分析師與開發者的免費線上工具箱。Hash、JWT、IOC、CIDR、CVSS 等工具全程在瀏覽器本機處理。",
+    "繁體中文免費線上資安工具箱，提供 Hash、JWT、IOC、CIDR、CVSS、TOTP、IPv6 與 Unicode 解碼；所有資料只在瀏覽器本機處理。",
   keywords: [
     "資安工具",
     "cybersecurity tools",
@@ -19,6 +19,10 @@ export const metadata: Metadata = {
     "IOC extractor",
     "CVSS calculator",
     "CIDR calculator",
+    "TOTP 產生器",
+    "IPv6 轉換",
+    "Unicode 解碼",
+    "CTF 工具",
   ],
   authors: [{ name: "SecTools.tw" }],
   creator: "SecTools.tw",
