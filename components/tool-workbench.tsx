@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   analyzeEmailHeaders,
+  analyzeCspPolicy,
   analyzeIpAddress,
   analyzePathTraversal,
   analyzeSecurityHeaders,
@@ -32,12 +33,14 @@ import {
   extractIocs,
   extractPrintableStrings,
   formatHexView,
+  hexToBytes,
   identifyHash,
   identifyFileSignature,
   refang,
   numbersToAscii,
   packInteger,
   parseHttpMessage,
+  parsePcapFile,
   unpackInteger,
   xorTransform,
   gcdBigInt,
@@ -47,6 +50,7 @@ import {
   powMod,
   scanSecrets,
   utf8ToBase64,
+  verifyJwtSignature,
   type CvssMetrics,
   type DnsRecord,
   type EscapeFormat,
@@ -497,6 +501,51 @@ function PathTraversalAnalyzerTool() {
   return <div className="single-workbench"><div className="warning-banner"><strong>只做詞法正規化，不讀取任何檔案</strong><span>結果用於辨識 canonicalization 差異；實際是否可利用仍取決於應用程式、作業系統與檔案權限。</span></div><TextArea label="URL／檔案路徑" value={input} onChange={setInput} placeholder="..%252f..%252fetc%252fpasswd" rows={8} /><label className="field field--short"><span>最多 URL 解碼層數</span><select value={layers} onChange={(event) => setLayers(Number(event.target.value))}>{[0,1,2,3,4,5].map((value) => <option key={value} value={value}>{value} layers</option>)}</select></label><button className="primary-button" type="button" onClick={run}>分析 Path Traversal</button><ErrorNotice message={error} />{result && <div className="path-report"><div className={`file-verdict ${result.risk === "高" ? "is-mismatch" : ""}`}><span>RISK LEVEL</span><strong>{result.risk}風險</strong></div><div className="stat-grid"><div><span>DECODE LAYERS</span><strong>{result.decodeSteps.length}</strong></div><div><span>TRAVERSAL</span><strong>{result.traversalSegments}</strong></div><div><span>ESCAPES ROOT</span><strong>{result.escapesRoot}</strong></div><div><span>FINDINGS</span><strong>{result.findings.length}</strong></div></div>{result.findings.length > 0 ? <div className="warning-list"><strong>分析結果</strong><ul>{result.findings.map((finding) => <li key={finding}>{finding}</li>)}</ul></div> : <p className="safe-note">未發現明顯的 traversal 或路徑解析風險訊號。</p>}{result.decodeSteps.length > 0 && <div className="path-decode-steps"><strong>PERCENT DECODING</strong><ol>{result.decodeSteps.map((step) => <li key={step.layer}><span>LAYER {step.layer}</span><code>{step.value}</code></li>)}</ol></div>}<div className="result-block"><span>LEXICALLY NORMALIZED PATH</span><code>{result.normalizedDisplay}</code></div><CopyButton value={result.normalized} label="複製正規化路徑" /></div>}</div>;
 }
 
+function CspPolicyAnalyzerTool() {
+  const [input, setInput] = useState("default-src 'none'; script-src 'self' 'nonce-abc123'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests; require-trusted-types-for 'script'");
+  const [result, setResult] = useState<ReturnType<typeof analyzeCspPolicy> | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setResult(analyzeCspPolicy(input)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "CSP 解析失敗。 "); }
+  }
+  return <div className="single-workbench"><div className="warning-banner"><strong>只分析政策文字，不對網站發送請求</strong><span>分數用於找出明顯缺口，不代表瀏覽器相容性或應用程式功能已完整驗證。</span></div><TextArea label="Content-Security-Policy" value={input} onChange={setInput} placeholder="default-src 'self'; script-src 'self' 'nonce-...'; object-src 'none'" rows={12} /><button className="primary-button" type="button" onClick={run}>深度分析 CSP</button><ErrorNotice message={error} />{result && <div className="csp-report"><div className="report-score"><strong>{result.score}</strong><span>/ 100 · Grade {result.grade}</span><small>{result.directives.length} directives{result.reportOnly ? " · Report-Only" : ""}</small></div><div className="csp-directives">{result.directives.map((directive, index) => <div key={`${directive.name}-${index}`}><strong>{directive.name}</strong><code>{directive.values.join(" ") || "(boolean directive)"}</code></div>)}</div><div className="check-list">{result.findings.map((finding, index) => <div key={`${finding.title}-${index}`} className={`check-item check-item--${finding.severity}`}><i>{finding.severity === "pass" ? "✓" : finding.severity === "warn" ? "!" : "×"}</i><div><strong>{finding.title}</strong><p>{finding.detail}</p></div></div>)}</div></div>}</div>;
+}
+
+function JwtSignatureVerifierTool() {
+  const [token, setToken] = useState("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c");
+  const [key, setKey] = useState("your-256-bit-secret");
+  const [result, setResult] = useState<Awaited<ReturnType<typeof verifyJwtSignature>> | null>(null);
+  const [error, setError] = useState("");
+  const [working, setWorking] = useState(false);
+  async function run() {
+    setWorking(true);
+    try { setResult(await verifyJwtSignature(token, key)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "JWT 驗章失敗。 "); }
+    finally { setWorking(false); }
+  }
+  return <div className="single-workbench"><div className="warning-banner"><strong>不會下載 JWKS，也不接受 alg=none</strong><span>請只使用你信任來源取得的公開 JWK；簽章有效不代表 issuer、audience 或權限宣告可信。</span></div><TextArea label="JWT" value={token} onChange={setToken} placeholder="eyJhbGciOi..." rows={8} /><TextArea label="HMAC Secret 或公開 JWK JSON" value={key} onChange={setKey} placeholder={'{"kty":"RSA","n":"...","e":"AQAB"}'} rows={8} /><button className="primary-button" type="button" onClick={run} disabled={working}>{working ? "驗證中…" : "驗證 JWT 簽章"}</button><ErrorNotice message={error} />{result && <div className="jwt-verify-report"><div className={`file-verdict ${result.valid ? "" : "is-mismatch"}`}><span>SIGNATURE</span><strong>{result.valid ? "簽章有效" : "簽章無效"}</strong><p>{result.alg} · {result.keyType}</p></div>{result.warnings.length > 0 && <div className="warning-list"><strong>Claims 注意事項</strong><ul>{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}<div className="jwt-results"><div><span>HEADER</span><code>{JSON.stringify(result.header, null, 2)}</code></div><div><span>PAYLOAD</span><code>{JSON.stringify(result.payload, null, 2)}</code></div></div></div>}</div>;
+}
+
+const samplePcapHex = "d4c3b2a1020004000000000000000000000004000100000000000000000000002a0000002a00000000112233445566778899aabb08004500001c0001000040110000c0000201c63364023039003500080000";
+
+function PcapSummaryAnalyzerTool() {
+  const [filename, setFilename] = useState("");
+  const [result, setResult] = useState<ReturnType<typeof parsePcapFile> | null>(null);
+  const [error, setError] = useState("");
+  async function inspect(file: File) {
+    try {
+      if (file.size > 10_000_000) throw new Error("PCAP 檔案超過 10 MB 上限。 ");
+      setResult(parsePcapFile(await file.arrayBuffer())); setFilename(file.name); setError("");
+    } catch (cause) { setResult(null); setFilename(""); setError(cause instanceof Error ? cause.message : "PCAP 讀取失敗。 "); }
+  }
+  function loadSample() {
+    try { setResult(parsePcapFile(hexToBytes(samplePcapHex))); setFilename("built-in-dns-sample.pcap"); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "範例 PCAP 解析失敗。 "); }
+  }
+  return <div className="single-workbench"><div className="warning-banner"><strong>只在本機讀取 classic PCAP</strong><span>上限 10 MB／5,000 packets，僅做 Header 與流量摘要；不重組 TCP stream、不執行 payload。</span></div><FileDropField onFile={inspect} accept=".pcap,.cap,application/vnd.tcpdump.pcap" /><button className="ghost-button" type="button" onClick={loadSample}>載入內建 DNS／UDP 範例</button><ErrorNotice message={error} />{result && <div className="pcap-report"><div className="file-verdict"><span>PCAP SUMMARY</span><strong>{filename}</strong></div><div className="stat-grid"><div><span>VERSION</span><strong>{result.version}</strong></div><div><span>BYTE ORDER</span><strong>{result.byteOrder}</strong></div><div><span>LINK TYPE</span><strong>{result.linkType}</strong></div><div><span>PACKETS</span><strong>{result.packetCount}</strong></div><div><span>SNAPLEN</span><strong>{result.snaplen}</strong></div><div><span>RESOLUTION</span><strong>{result.timestampResolution}</strong></div></div>{result.warnings.length > 0 && <div className="warning-list"><strong>解析提醒</strong><ul>{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}<div className="pcap-overview"><section><strong>PROTOCOLS</strong>{result.protocols.length ? <ul>{result.protocols.map((item) => <li key={item.name}><code>{item.name}</code><span>{item.count}</span></li>)}</ul> : <p>沒有資料</p>}</section><section><strong>TOP ENDPOINTS</strong>{result.topEndpoints.length ? <ul>{result.topEndpoints.map((item) => <li key={item.address}><code>{item.address}</code><span>{item.count}</span></li>)}</ul> : <p>沒有資料</p>}</section></div>{result.packets.length > 0 && <div className="pcap-table"><div><span>#</span><span>TIME (UTC)</span><span>PROTOCOL</span><span>SOURCE</span><span>DESTINATION</span><span>LENGTH</span></div>{result.packets.map((packet) => <div key={packet.index}><span>{packet.index}</span><code>{packet.timestamp}</code><strong>{packet.protocol}</strong><code>{packet.source || "—"}</code><code>{packet.destination || "—"}</code><span>{packet.capturedLength}</span></div>)}</div>}</div>}</div>;
+}
+
 export function ToolWorkbench({ slug }: { slug: string }) {
   switch (slug) {
     case "base64-codec": return <CodecTool mode="base64" />;
@@ -536,6 +585,9 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "ipv4-cidr-aggregator": return <Ipv4CidrAggregatorTool />;
     case "dns-message-decoder": return <DnsMessageDecoderTool />;
     case "path-traversal-analyzer": return <PathTraversalAnalyzerTool />;
+    case "csp-policy-analyzer": return <CspPolicyAnalyzerTool />;
+    case "jwt-signature-verifier": return <JwtSignatureVerifierTool />;
+    case "pcap-summary-analyzer": return <PcapSummaryAnalyzerTool />;
     default: return null;
   }
 }

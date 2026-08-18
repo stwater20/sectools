@@ -5,11 +5,11 @@
 ## 目前工具
 
 - 編碼與雜湊：Base64、URL Codec、Hash、HMAC、SRI
-- 密碼與驗證：JWT Decoder、安全密碼產生器、密碼強度檢查、TOTP/HOTP 驗證碼
+- 密碼與驗證：JWT Decoder、JWT/JWK Signature Verifier、安全密碼產生器、密碼強度檢查、TOTP/HOTP 驗證碼
 - 威脅分析：IOC Extractor、URL Defang / Refang、Entropy Calculator
 - 網路與風險：IPv4 CIDR Calculator、IPv4 CIDR Aggregator、IPv6 CIDR Calculator、IPv4/IPv6 位址轉換、HTTP Message Parser、DNS Wire Message Decoder、CVSS v3.1 Calculator
-- 網站與郵件：Security Headers Analyzer、Email Header Analyzer
-- 鑑識與分析：File Signature Checker、String Extractor、Forensic Timestamp Decoder
+- 網站與郵件：Security Headers Analyzer、CSP Policy Analyzer、Email Header Analyzer
+- 鑑識與分析：File Signature Checker、PCAP Summary Analyzer、String Extractor、Forensic Timestamp Decoder
 - 進階分析：Secret Scanner、Hash Identifier、Hex Viewer、Suspicious URL Analyzer、chmod Calculator
 - CTF：XOR Tool、Caesar Brute Force、Base/ASCII Converter、Integer Pack/Unpack、RSA Math Helper、Unicode/Escape Codec、多層編碼解碼器、Path Traversal Analyzer
 

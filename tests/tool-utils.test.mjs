@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   analyzeEmailHeaders,
+  analyzeCspPolicy,
   analyzeIpAddress,
   analyzePathTraversal,
   analyzeSecurityHeaders,
@@ -31,6 +32,7 @@ import {
   refang,
   scanSecrets,
   packInteger,
+  parsePcapFile,
   parseHttpMessage,
   unpackInteger,
   xorTransform,
@@ -40,6 +42,7 @@ import {
   modInverse,
   powMod,
   utf8ToBase64,
+  verifyJwtSignature,
 } from "../lib/tool-utils.ts";
 
 test("Base64 round-trips UTF-8 text", () => {
@@ -173,6 +176,69 @@ test("path traversal analyzer exposes double encoding and null bytes", () => {
   const safe = analyzePathTraversal("images/avatar.png");
   assert.equal(safe.risk, "低");
   assert.equal(safe.normalized, "images/avatar.png");
+});
+
+test("CSP analyzer rewards deny-by-default and flags unsafe script sources", () => {
+  const hardened = analyzeCspPolicy("default-src 'none'; script-src 'self' 'nonce-test'; style-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; require-trusted-types-for 'script'");
+  assert.equal(hardened.score, 100);
+  assert.equal(hardened.grade, "A");
+  assert.ok(hardened.findings.every((finding) => finding.severity === "pass"));
+
+  const weak = analyzeCspPolicy("Content-Security-Policy-Report-Only: default-src *; script-src * 'unsafe-inline' 'unsafe-eval'");
+  assert.equal(weak.reportOnly, true);
+  assert.equal(weak.grade, "F");
+  assert.ok(weak.findings.some((finding) => finding.title.includes("unsafe-eval") && finding.severity === "fail"));
+  assert.ok(weak.findings.some((finding) => finding.title.includes("inline script") && finding.severity === "fail"));
+});
+
+test("JWT verifier validates HS256 and rejects tampering and alg none", async () => {
+  const secret = "unit-test-secret-with-enough-entropy";
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const header = encode({ alg: "HS256", typ: "JWT" });
+  const payload = encode({ sub: "alice", exp: 2_000 });
+  const signingInput = `${header}.${payload}`;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = Buffer.from(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signingInput))).toString("base64url");
+  const token = `${signingInput}.${signature}`;
+  const valid = await verifyJwtSignature(token, secret, 1_000);
+  assert.equal(valid.valid, true);
+  assert.equal(valid.alg, "HS256");
+  assert.equal(valid.keyType, "HMAC Secret");
+  assert.equal(valid.warnings.length, 0);
+
+  const tampered = `${header}.${encode({ sub: "mallory", exp: 2_000 })}.${signature}`;
+  assert.equal((await verifyJwtSignature(tampered, secret, 1_000)).valid, false);
+  const noneToken = `${encode({ alg: "none" })}.${payload}.x`;
+  await assert.rejects(() => verifyJwtSignature(noneToken, secret, 1_000), /alg=none/);
+
+  const numericSecret = "123456";
+  const numericKey = await crypto.subtle.importKey("raw", new TextEncoder().encode(numericSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const numericSignature = Buffer.from(await crypto.subtle.sign("HMAC", numericKey, new TextEncoder().encode(signingInput))).toString("base64url");
+  assert.equal((await verifyJwtSignature(`${signingInput}.${numericSignature}`, numericSecret, 1_000)).valid, true);
+});
+
+test("JWT verifier validates RS256 with a public JWK", async () => {
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const pair = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 1024, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
+  const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+  const signingInput = `${encode({ alg: "RS256", typ: "JWT" })}.${encode({ sub: "rsa-test", exp: 2_000 })}`;
+  const signature = Buffer.from(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", pair.privateKey, new TextEncoder().encode(signingInput))).toString("base64url");
+  const result = await verifyJwtSignature(`${signingInput}.${signature}`, JSON.stringify({ ...publicJwk, alg: "RS256" }), 1_000);
+  assert.equal(result.valid, true);
+  assert.equal(result.keyType, "RSA JWK");
+});
+
+test("PCAP analyzer summarizes an Ethernet IPv4 DNS packet", () => {
+  const sample = "d4c3b2a1020004000000000000000000000004000100000000000000000000002a0000002a00000000112233445566778899aabb08004500001c0001000040110000c0000201c63364023039003500080000";
+  const result = parsePcapFile(new Uint8Array(Buffer.from(sample, "hex")));
+  assert.equal(result.version, "2.4");
+  assert.equal(result.byteOrder, "Little Endian");
+  assert.equal(result.linkType, "Ethernet");
+  assert.equal(result.packetCount, 1);
+  assert.deepEqual(result.protocols, [{ name: "DNS/UDP", count: 1 }]);
+  assert.equal(result.packets[0].source, "192.0.2.1:12345");
+  assert.equal(result.packets[0].destination, "198.51.100.2:53");
+  assert.throws(() => parsePcapFile(new Uint8Array(Buffer.from("0a0d0d0a0000000000000000000000000000000000000000", "hex"))), /PCAPNG/);
 });
 
 test("CVSS v3.1 example calculates a critical 9.8", () => {

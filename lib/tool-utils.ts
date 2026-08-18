@@ -1124,3 +1124,262 @@ export function analyzePathTraversal(value: string, maxDecodeLayers = 3) {
     risk,
   };
 }
+
+export type CspFinding = { severity: "pass" | "warn" | "fail"; title: string; detail: string };
+
+export function analyzeCspPolicy(value: string) {
+  assertSafeInput(value);
+  const raw = value.trim();
+  if (!raw) throw new Error("請輸入 Content-Security-Policy。 ");
+  const headerMatch = raw.match(/^content-security-policy(-report-only)?\s*:\s*/i);
+  const reportOnly = Boolean(headerMatch?.[1]);
+  const policy = headerMatch ? raw.slice(headerMatch[0].length) : raw;
+  const directives: Array<{ name: string; values: string[] }> = [];
+  const map = new Map<string, string[]>();
+  const duplicates = new Set<string>();
+  for (const part of policy.split(";")) {
+    const tokens = part.trim().split(/\s+/).filter(Boolean);
+    if (!tokens.length) continue;
+    const name = tokens.shift()!.toLowerCase();
+    if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error(`CSP directive 名稱無效：${name}`);
+    if (map.has(name)) duplicates.add(name);
+    const values = tokens.map((token) => token.trim());
+    directives.push({ name, values });
+    map.set(name, [...(map.get(name) ?? []), ...values]);
+  }
+  if (!directives.length) throw new Error("找不到有效的 CSP directives。 ");
+  const get = (name: string) => map.get(name) ?? [];
+  const effective = (name: string) => get(name).length ? get(name) : get("default-src");
+  const has = (sources: string[], token: string) => sources.some((source) => source.toLowerCase() === token);
+  const findings: CspFinding[] = [];
+  const add = (severity: CspFinding["severity"], title: string, detail: string) => findings.push({ severity, title, detail });
+  const defaultSources = get("default-src");
+  const scriptSources = effective("script-src");
+  const styleSources = effective("style-src");
+
+  if (!defaultSources.length) add("fail", "缺少 default-src", "未設定全域 fallback，未列出的資源類型可能不受預期限制。");
+  else if (has(defaultSources, "'none'")) add("pass", "default-src 已封鎖", "default-src 'none' 採用 deny-by-default 策略。");
+  else if (defaultSources.includes("*") || defaultSources.some((source) => /^https?:$/.test(source))) add("fail", "default-src 過度寬鬆", "default-src 包含 wildcard 或整個 HTTP(S) scheme，fallback 幾乎沒有來源限制。");
+  else add("pass", "已有 default-src", `全域 fallback：${defaultSources.join(" ")}`);
+  if (!scriptSources.length) add("fail", "script-src 無有效來源", "script-src 與 default-src 都未提供腳本來源限制。");
+  else {
+    if (has(scriptSources, "'unsafe-eval'")) add("fail", "腳本允許 unsafe-eval", "攻擊者可能利用字串動態產生程式碼，應移除 'unsafe-eval'。");
+    if (has(scriptSources, "'unsafe-inline'")) add("fail", "允許 inline script", "'unsafe-inline' 會大幅削弱 XSS 防護；優先改用 nonce 或 hash。");
+    if (scriptSources.includes("*") || scriptSources.some((source) => /^https?:$/.test(source))) add("fail", "腳本來源過度寬鬆", "script-src 包含 wildcard 或整個 HTTP(S) scheme。");
+    if (scriptSources.some((source) => /^(data|blob):$/i.test(source))) add("fail", "腳本允許 data/blob", "data: 或 blob: 腳本來源可能擴大注入面。");
+    if (!findings.some((finding) => finding.title.includes("script") || finding.title.includes("腳本"))) add("pass", "script-src 未見明顯高風險", "未發現 unsafe-eval、unsafe-inline、wildcard 或 data/blob 腳本來源。");
+  }
+  if (has(styleSources, "'unsafe-inline'")) add("warn", "允許 inline style", "常見於既有框架，但仍可能擴大 CSS injection 影響面。");
+  const objectSources = get("object-src");
+  if (!has(objectSources, "'none'")) add("warn", "object-src 未封鎖", "建議加入 object-src 'none'，停用不必要的 plugin content。");
+  else add("pass", "object-src 已封鎖", "不允許 object、embed 與 applet 資源。");
+  const baseSources = get("base-uri");
+  if (!baseSources.length) add("warn", "缺少 base-uri", "建議限制 base-uri，避免 base tag 改寫相對 URL 解析基準。");
+  else if (has(baseSources, "'none'") || has(baseSources, "'self'")) add("pass", "base-uri 已限制", `目前設定：${baseSources.join(" ")}`);
+  else add("warn", "base-uri 可能過寬", `目前設定：${baseSources.join(" ")}`);
+  const frameAncestors = get("frame-ancestors");
+  if (!frameAncestors.length) add("warn", "缺少 frame-ancestors", "建議限制可嵌入此頁的來源，降低 clickjacking 風險。");
+  else add("pass", "frame-ancestors 已設定", `目前設定：${frameAncestors.join(" ")}`);
+  if (!get("form-action").length) add("warn", "缺少 form-action", "建議限制表單可送出的目的地。");
+  else add("pass", "form-action 已設定", `目前設定：${get("form-action").join(" ")}`);
+  if (!map.has("upgrade-insecure-requests") && scriptSources.some((source) => source.startsWith("http:"))) add("warn", "仍允許 HTTP 資源", "政策含 HTTP source，且未設定 upgrade-insecure-requests。");
+  if (duplicates.size) add("warn", "重複 directives", `重複項目：${[...duplicates].join(", ")}；瀏覽器可能忽略後續定義。`);
+  if (reportOnly) add("warn", "Report-Only 模式", "此政策只回報違規，不會實際阻擋資源。");
+  if (get("require-trusted-types-for").some((source) => source === "'script'")) add("pass", "Trusted Types 已啟用", "require-trusted-types-for 'script' 可降低 DOM XSS sink 風險。");
+
+  const penalty = findings.reduce((total, finding) => total + (finding.severity === "fail" ? 20 : finding.severity === "warn" ? 7 : 0), 0);
+  const score = Math.max(0, 100 - penalty);
+  const grade = score >= 90 ? "A" : score >= 75 ? "B" : score >= 60 ? "C" : score >= 40 ? "D" : "F";
+  return { score, grade, reportOnly, directives, findings };
+}
+
+function base64UrlToBytes(value: string) {
+  if (!/^[A-Za-z0-9_-]*$/.test(value)) throw new Error("JWT 使用了無效的 Base64URL 字元。 ");
+  const standard = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  try { return Uint8Array.from(atob(standard), (character) => character.charCodeAt(0)); }
+  catch { throw new Error("JWT Base64URL 欄位無法解碼。 "); }
+}
+
+export async function verifyJwtSignature(tokenValue: string, keyValue: string, nowSeconds = Math.floor(Date.now() / 1000)) {
+  const token = tokenValue.trim();
+  const keyText = keyValue.trim();
+  assertSafeInput(token);
+  assertSafeInput(keyText);
+  const parts = token.split(".");
+  if (parts.length !== 3 || parts.some((part) => !part)) throw new Error("JWT 必須包含三個非空的 Base64URL 區段。 ");
+  let header: Record<string, unknown>;
+  let payload: Record<string, unknown>;
+  try {
+    header = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(base64UrlToBytes(parts[0])));
+    payload = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(base64UrlToBytes(parts[1])));
+  } catch (cause) {
+    if (cause instanceof Error && cause.message.startsWith("JWT ")) throw cause;
+    throw new Error("JWT Header 或 Payload 不是有效的 UTF-8 JSON object。 ");
+  }
+  if (!header || typeof header !== "object" || Array.isArray(header) || !payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("JWT Header 與 Payload 必須是 JSON object。 ");
+  const alg = typeof header.alg === "string" ? header.alg : "";
+  if (!alg || alg.toLowerCase() === "none") throw new Error("拒絕驗證 alg=none 或缺少 alg 的 JWT。 ");
+  const supported = /^(HS|RS|PS)(256|384|512)$|^ES(256|384|512)$/.exec(alg);
+  if (!supported) throw new Error(`不支援或不安全的 JWT alg：${alg}`);
+  if (!keyText) throw new Error("請輸入 HMAC Secret 或公開 JWK。 ");
+  const family = alg.slice(0, 2);
+  const bits = Number(alg.slice(2));
+  const hash = `SHA-${bits}`;
+  const signature = base64UrlToBytes(parts[2]);
+  const data = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
+  let key: CryptoKey;
+  let algorithm: AlgorithmIdentifier | RsaPssParams | EcdsaParams;
+  let keyType = "";
+  let parsedJwk: JsonWebKey | null = null;
+  try {
+    const candidate = JSON.parse(keyText) as unknown;
+    if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) parsedJwk = candidate as JsonWebKey;
+  } catch { parsedJwk = null; }
+  if (family === "HS") {
+    if (parsedJwk && parsedJwk.kty !== "oct") throw new Error("HS 系列演算法只能使用 oct JWK 或純文字 Secret。 ");
+    key = parsedJwk
+      ? await crypto.subtle.importKey("jwk", parsedJwk, { name: "HMAC", hash }, false, ["verify"])
+      : await crypto.subtle.importKey("raw", new TextEncoder().encode(keyText), { name: "HMAC", hash }, false, ["verify"]);
+    algorithm = "HMAC";
+    keyType = parsedJwk ? "oct JWK" : "HMAC Secret";
+  } else {
+    if (!parsedJwk || typeof parsedJwk !== "object") throw new Error(`${alg} 必須提供 JSON 格式的公開 JWK。 `);
+    if (parsedJwk.alg && parsedJwk.alg !== alg) throw new Error(`JWK alg (${parsedJwk.alg}) 與 JWT alg (${alg}) 不一致。 `);
+    if ((family === "RS" || family === "PS") && parsedJwk.kty !== "RSA") throw new Error(`${alg} 只能使用 RSA JWK。 `);
+    if (family === "ES" && parsedJwk.kty !== "EC") throw new Error(`${alg} 只能使用 EC JWK。 `);
+    if (family === "RS") {
+      key = await crypto.subtle.importKey("jwk", parsedJwk, { name: "RSASSA-PKCS1-v1_5", hash }, false, ["verify"]);
+      algorithm = "RSASSA-PKCS1-v1_5";
+    } else if (family === "PS") {
+      key = await crypto.subtle.importKey("jwk", parsedJwk, { name: "RSA-PSS", hash }, false, ["verify"]);
+      algorithm = { name: "RSA-PSS", saltLength: bits / 8 };
+    } else {
+      const expectedCurve = { 256: "P-256", 384: "P-384", 512: "P-521" }[bits];
+      if (parsedJwk.crv !== expectedCurve) throw new Error(`${alg} 必須使用 ${expectedCurve} curve。 `);
+      key = await crypto.subtle.importKey("jwk", parsedJwk, { name: "ECDSA", namedCurve: expectedCurve }, false, ["verify"]);
+      algorithm = { name: "ECDSA", hash };
+    }
+    keyType = `${parsedJwk.kty} JWK`;
+  }
+  const valid = await crypto.subtle.verify(algorithm, key, signature, data);
+  const warnings: string[] = [];
+  if (typeof payload.exp === "number" && payload.exp < nowSeconds) warnings.push("Token 已超過 exp 到期時間。 ");
+  if (typeof payload.nbf === "number" && payload.nbf > nowSeconds) warnings.push("Token 尚未到 nbf 生效時間。 ");
+  if (typeof payload.iat === "number" && payload.iat > nowSeconds + 300) warnings.push("iat 比目前時間晚超過 5 分鐘，請檢查時鐘或內容。 ");
+  if (typeof payload.exp !== "number") warnings.push("Token 沒有數值型 exp，到期時間無法判斷。 ");
+  return { valid, alg, keyType, header, payload, warnings };
+}
+
+export type PcapPacketSummary = { index: number; timestamp: string; capturedLength: number; originalLength: number; protocol: string; source: string; destination: string; info: string };
+
+export function parsePcapFile(input: ArrayBuffer | Uint8Array) {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  if (bytes.byteLength > 10_000_000) throw new Error("PCAP 檔案超過 10 MB 安全上限。 ");
+  if (bytes.byteLength < 24) throw new Error("Classic PCAP 至少需要 24-byte Global Header。 ");
+  const magic = Array.from(bytes.subarray(0, 4), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  if (magic === "0a0d0d0a") throw new Error("目前只支援 classic PCAP；PCAPNG 請先轉換成 .pcap。 ");
+  const formats: Record<string, { littleEndian: boolean; nanoseconds: boolean }> = {
+    a1b2c3d4: { littleEndian: false, nanoseconds: false }, d4c3b2a1: { littleEndian: true, nanoseconds: false },
+    a1b23c4d: { littleEndian: false, nanoseconds: true }, "4d3cb2a1": { littleEndian: true, nanoseconds: true },
+  };
+  const format = formats[magic];
+  if (!format) throw new Error(`不支援的 PCAP magic number：0x${magic}`);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const u16 = (offset: number) => view.getUint16(offset, format.littleEndian);
+  const u32 = (offset: number) => view.getUint32(offset, format.littleEndian);
+  const version = `${u16(4)}.${u16(6)}`;
+  const snaplen = u32(16);
+  const linkTypeCode = u32(20);
+  const linkTypes: Record<number, string> = { 1: "Ethernet", 101: "Raw IP", 113: "Linux SLL" };
+  const linkType = linkTypes[linkTypeCode] ?? `LINKTYPE_${linkTypeCode}`;
+  const protocolCounts = new Map<string, number>();
+  const endpointCounts = new Map<string, number>();
+  const packets: PcapPacketSummary[] = [];
+  const warnings: string[] = [];
+  let offset = 24;
+  let packetCount = 0;
+  let stoppedAtLimit = false;
+  const ipv4 = (position: number) => Array.from(bytes.subarray(position, position + 4)).join(".");
+  const ipv6 = (position: number) => bigintToIpv6(BigInt(`0x${Array.from(bytes.subarray(position, position + 16), (byte) => byte.toString(16).padStart(2, "0")).join("")}`)).normalized;
+  while (offset < bytes.length) {
+    if (packetCount >= 5_000) { stoppedAtLimit = true; break; }
+    if (offset + 16 > bytes.length) throw new Error("PCAP packet header 在檔案結尾前被截斷。 ");
+    const seconds = u32(offset);
+    const fraction = u32(offset + 4);
+    const capturedLength = u32(offset + 8);
+    const originalLength = u32(offset + 12);
+    const packetOffset = offset + 16;
+    const packetEnd = packetOffset + capturedLength;
+    if (capturedLength > snaplen && snaplen > 0) warnings.push(`Packet ${packetCount + 1} captured length 超過 snaplen。`);
+    if (packetEnd > bytes.length) throw new Error(`Packet ${packetCount + 1} payload 在檔案結尾前被截斷。 `);
+    packetCount += 1;
+    let networkOffset = packetOffset;
+    let etherType = 0;
+    if (linkTypeCode === 1 && capturedLength >= 14) {
+      etherType = (bytes[packetOffset + 12] << 8) | bytes[packetOffset + 13];
+      networkOffset += 14;
+      if (etherType === 0x8100 && capturedLength >= 18) { etherType = (bytes[packetOffset + 16] << 8) | bytes[packetOffset + 17]; networkOffset += 4; }
+    } else if (linkTypeCode === 101) etherType = (bytes[networkOffset] >> 4) === 6 ? 0x86dd : 0x0800;
+    else if (linkTypeCode === 113 && capturedLength >= 16) { etherType = (bytes[packetOffset + 14] << 8) | bytes[packetOffset + 15]; networkOffset += 16; }
+    let protocol = linkTypes[linkTypeCode] ? "Other" : linkType;
+    let source = "";
+    let destination = "";
+    let sourceAddress = "";
+    let destinationAddress = "";
+    let info = "";
+    let transportOffset = 0;
+    let protocolNumber = -1;
+    if (etherType === 0x0800 && networkOffset + 20 <= packetEnd && (bytes[networkOffset] >> 4) === 4) {
+      const headerLength = (bytes[networkOffset] & 0x0f) * 4;
+      if (headerLength >= 20 && networkOffset + headerLength <= packetEnd) {
+        protocolNumber = bytes[networkOffset + 9];
+        source = sourceAddress = ipv4(networkOffset + 12);
+        destination = destinationAddress = ipv4(networkOffset + 16);
+        transportOffset = networkOffset + headerLength;
+        protocol = { 1: "ICMP", 6: "TCP", 17: "UDP" }[protocolNumber] ?? `IPv4/${protocolNumber}`;
+      }
+    } else if (etherType === 0x86dd && networkOffset + 40 <= packetEnd && (bytes[networkOffset] >> 4) === 6) {
+      protocolNumber = bytes[networkOffset + 6];
+      source = sourceAddress = ipv6(networkOffset + 8);
+      destination = destinationAddress = ipv6(networkOffset + 24);
+      transportOffset = networkOffset + 40;
+      protocol = { 6: "TCP", 17: "UDP", 58: "ICMPv6" }[protocolNumber] ?? `IPv6/${protocolNumber}`;
+    }
+    if ((protocolNumber === 6 || protocolNumber === 17) && transportOffset + 4 <= packetEnd) {
+      const sourcePort = (bytes[transportOffset] << 8) | bytes[transportOffset + 1];
+      const destinationPort = (bytes[transportOffset + 2] << 8) | bytes[transportOffset + 3];
+      info = `${sourcePort} → ${destinationPort}`;
+      if (sourcePort === 53 || destinationPort === 53) protocol = protocolNumber === 17 ? "DNS/UDP" : "DNS/TCP";
+      source = source ? `${source}:${sourcePort}` : `${sourcePort}`;
+      destination = destination ? `${destination}:${destinationPort}` : `${destinationPort}`;
+    }
+    protocolCounts.set(protocol, (protocolCounts.get(protocol) ?? 0) + 1);
+    for (const endpoint of [sourceAddress, destinationAddress]) if (endpoint) endpointCounts.set(endpoint, (endpointCounts.get(endpoint) ?? 0) + 1);
+    if (packets.length < 200) packets.push({
+      index: packetCount,
+      timestamp: new Date(seconds * 1000 + fraction / (format.nanoseconds ? 1_000_000 : 1_000)).toISOString(),
+      capturedLength,
+      originalLength,
+      protocol,
+      source,
+      destination,
+      info,
+    });
+    offset = packetEnd;
+  }
+  if (stoppedAtLimit) warnings.push("已達 5,000 packets 安全上限，後續封包未解析。 ");
+  if (!packets.length) warnings.push("檔案沒有可顯示的 packet records。 ");
+  return {
+    version,
+    byteOrder: format.littleEndian ? "Little Endian" : "Big Endian",
+    timestampResolution: format.nanoseconds ? "Nanoseconds" : "Microseconds",
+    snaplen,
+    linkType,
+    packetCount,
+    displayedPackets: packets.length,
+    protocols: [...protocolCounts.entries()].sort((left, right) => right[1] - left[1]).map(([name, count]) => ({ name, count })),
+    topEndpoints: [...endpointCounts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 10).map(([address, count]) => ({ address, count })),
+    packets,
+    warnings: [...new Set(warnings)],
+  };
+}
