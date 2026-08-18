@@ -8,6 +8,7 @@ import {
   asciiToNumbers,
   base64ToUtf8,
   calculateCidr,
+  calculateIpv6Cidr,
   calculateChmod,
   bruteForceSingleByteXor,
   caesarBruteforce,
@@ -16,6 +17,7 @@ import {
   calculateEntropy,
   decodeTimestamp,
   decodeEscapedText,
+  decodeLayered,
   defang,
   extractIocs,
   extractPrintableStrings,
@@ -26,6 +28,7 @@ import {
   refang,
   scanSecrets,
   packInteger,
+  parseHttpMessage,
   unpackInteger,
   xorTransform,
   gcdBigInt,
@@ -51,6 +54,75 @@ test("CIDR calculator returns the correct /24 range", () => {
     totalAddresses: "256",
     usableHosts: "254",
   });
+});
+
+test("IPv6 CIDR calculator returns exact network bounds", () => {
+  assert.deepEqual(calculateIpv6Cidr("2001:db8:1234:5678::1/64"), {
+    prefix: 64,
+    network: "2001:db8:1234:5678::/64",
+    expandedNetwork: "2001:0db8:1234:5678:0000:0000:0000:0000/64",
+    firstAddress: "2001:db8:1234:5678::",
+    lastAddress: "2001:db8:1234:5678:ffff:ffff:ffff:ffff",
+    addressCount: "18446744073709551616",
+    reverseZone: "8.7.6.5.4.3.2.1.8.b.d.0.1.0.0.2.ip6.arpa",
+  });
+  assert.equal(calculateIpv6Cidr("2001:db8::1/128").addressCount, "1");
+  assert.throws(() => calculateIpv6Cidr("2001:db8::1/129"), /0 到 128/);
+});
+
+test("HTTP parser extracts request fields and warns about framing risks", () => {
+  const result = parseHttpMessage([
+    "POST /login?next=%2Fadmin HTTP/1.1",
+    "Host: example.test",
+    "Cookie: sid=abc; theme=dark",
+    "Content-Type: application/x-www-form-urlencoded",
+    "Content-Length: 99",
+    "Transfer-Encoding: chunked",
+    "",
+    "user=admin&pass=test",
+  ].join("\r\n"));
+
+  assert.equal(result.type, "request");
+  assert.equal(result.method, "POST");
+  assert.equal(result.target, "/login?next=%2Fadmin");
+  assert.deepEqual(result.query, [{ name: "next", value: "/admin" }]);
+  assert.deepEqual(result.cookies, [
+    { name: "sid", value: "abc" },
+    { name: "theme", value: "dark" },
+  ]);
+  assert.deepEqual(result.bodyParameters, [
+    { name: "user", value: "admin" },
+    { name: "pass", value: "test" },
+  ]);
+  assert.ok(result.warnings.some((warning) => warning.includes("Content-Length")));
+  assert.ok(result.warnings.some((warning) => warning.includes("Transfer-Encoding")));
+});
+
+test("HTTP parser validates JSON response bodies", () => {
+  const result = parseHttpMessage([
+    "HTTP/1.1 200 OK",
+    "Content-Type: application/json",
+    "Content-Length: 11",
+    "",
+    '{"ok":true}',
+  ].join("\r\n"));
+
+  assert.equal(result.type, "response");
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.jsonValid, true);
+  assert.deepEqual(result.json, { ok: true });
+  assert.equal(result.warnings.length, 0);
+});
+
+test("layered decoder unwraps URL, hex, and Base64 in bounded steps", () => {
+  const urlAndBase64 = decodeLayered("%5A%6D%78%68%5A%77%3D%3D");
+  assert.equal(urlAndBase64.final, "flag");
+  assert.deepEqual(urlAndBase64.steps.map((step) => step.format), ["URL percent encoding", "Base64 UTF-8"]);
+
+  const hexAndBase64 = decodeLayered("5a6d78685a773d3d");
+  assert.equal(hexAndBase64.final, "flag");
+  assert.deepEqual(hexAndBase64.steps.map((step) => step.format), ["Hex UTF-8", "Base64 UTF-8"]);
+  assert.deepEqual(decodeLayered("flag"), { final: "flag", steps: [], reachedLimit: false });
 });
 
 test("CVSS v3.1 example calculates a critical 9.8", () => {

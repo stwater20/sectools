@@ -179,6 +179,22 @@ export const toolCatalog: ToolDefinition[] = [
     },
   },
   {
+    slug: "ipv6-cidr-calculator",
+    name: "IPv6 CIDR 計算器",
+    englishName: "IPv6 CIDR Calculator",
+    description: "計算 IPv6 prefix 的網路位址、範圍、位址數與 Reverse DNS zone，並輸出 RFC 5952 正規格式。",
+    category: "網路與風險",
+    icon: "/6",
+    tags: ["ipv6", "cidr", "prefix", "subnet", "reverse dns"],
+    featured: true,
+    status: "new",
+    guide: {
+      intro: "IPv6 網段通常以 prefix length 表示，手動展開 128-bit 位址很容易出錯。本工具可離線計算網路邊界、完整範圍與 nibble-aligned Reverse DNS zone。",
+      steps: ["輸入 IPv6 位址與 prefix，例如 2001:db8:1234:5678::1/64。", "計算後核對 RFC 5952 壓縮格式、完整展開格式與首末位址。", "若 prefix 為 4 的倍數，可複製產生的 ip6.arpa Reverse DNS zone。"],
+      useCases: ["規劃 IPv6 subnet、ACL、Firewall 與 SIEM 網段條件。", "確認某個壓縮 IPv6 位址所屬的 prefix 範圍。", "產生 IPv6 PTR delegation 使用的 ip6.arpa zone。"],
+    },
+  },
+  {
     slug: "cvss-calculator",
     name: "CVSS v3.1 計算器",
     englishName: "CVSS v3.1 Calculator",
@@ -199,6 +215,22 @@ export const toolCatalog: ToolDefinition[] = [
     tags: ["security headers", "csp", "hsts", "http", "web security"],
     featured: true,
     status: "new",
+  },
+  {
+    slug: "http-message-parser",
+    name: "HTTP 訊息解析器",
+    englishName: "HTTP Request & Response Parser",
+    description: "解析原始 HTTP Request／Response、Headers、Query、Cookies 與表單 Body，並標示常見歧義與敏感欄位。",
+    category: "網路與風險",
+    icon: "HTTP",
+    tags: ["http request", "http response", "burp suite", "headers", "web ctf"],
+    featured: true,
+    status: "new",
+    guide: {
+      intro: "從 Burp Suite、Proxy、封包或 Log 複製的原始 HTTP 訊息常包含多層資料。本工具不會重送請求，只在本機拆解起始行、標頭與常見 Body 格式。",
+      steps: ["貼上完整 Request 或 Response，保留起始行與 Headers。", "按下解析後檢查 Method／Status、Query、Cookies、Body parameters 與重複 Headers。", "依警告確認 Content-Length、Transfer-Encoding 或敏感 Authorization 欄位是否需要進一步調查。"],
+      useCases: ["整理 Burp Suite、mitmproxy 或封包擷取中的 HTTP 訊息。", "分析 Web CTF 的 Query、Cookie、Form Body 與 Request Smuggling 線索。", "在不對目標主機發送任何請求的前提下檢查可疑流量。"],
+    },
   },
   {
     slug: "email-header-analyzer",
@@ -305,6 +337,11 @@ export const toolCatalog: ToolDefinition[] = [
     intro: "Unicode 與跳脫序列常被用在 JavaScript、HTML、XSS payload、惡意程式設定與 CTF 題目。本工具只把編碼還原成純文字，不會執行腳本或解析 HTML 標籤。",
     steps: ["選擇 JavaScript escape、Unicode code point 或 HTML numeric entity 格式。", "貼上要分析的跳脫序列並按解碼；也可貼入一般文字反向編碼。", "以純文字檢查結果，必要時搭配 URL Codec 或 Base64 工具繼續分層解碼。"],
     useCases: ["還原 \\u、\\x 與 \\u{...} 混淆的 JavaScript 字串。", "轉換 U+XXXX Unicode code point，辨識同形字與特殊字元。", "分析 HTML numeric entity 編碼的 XSS payload 或釣魚內容。"],
+  } },
+  { slug: "layered-decoder", name: "多層編碼解碼器", englishName: "Layered Encoding Decoder", description: "自動辨識並逐層還原 URL、Base64、Hex、JavaScript escape 與 HTML numeric entity，保留每一步記錄。", category: "CTF 工具", icon: "≋", tags: ["base64", "url decode", "hex", "unicode", "obfuscation", "ctf"], featured: true, status: "new", guide: {
+    intro: "惡意程式字串、釣魚連結與 CTF 題目常把 URL、Base64、Hex 或 Unicode 疊加多次。本工具會在安全上限內逐層辨識，並顯示每一步採用的格式。",
+    steps: ["貼上疑似多層編碼的字串，選擇最多解碼層數。", "執行後逐步檢查格式判斷與長度變化，避免把正常文字誤判為編碼。", "複製最終純文字；若仍有其他格式，可改用對應的單一編解碼工具深入分析。"],
+    useCases: ["拆解 URL encoding 包住 Base64 或 Hex 的 CTF payload。", "追蹤惡意 JavaScript、PowerShell 或釣魚內容的混淆層。", "以限深度、限輸出的方式分析未知字串，避免無限解碼。"],
   } },
 ];
 

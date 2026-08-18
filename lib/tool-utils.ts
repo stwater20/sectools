@@ -683,3 +683,193 @@ export function encodeEscapedText(value: string, format: EscapeFormat) {
     return point <= 0xffff ? `\\u${point.toString(16).toUpperCase().padStart(4, "0")}` : `\\u{${point.toString(16).toUpperCase()}}`;
   }).join("");
 }
+
+function bigintToIpv6(value: bigint) {
+  const hextets = Array.from({ length: 8 }, (_, index) => Number((value >> BigInt((7 - index) * 16)) & 0xffffn));
+  return {
+    normalized: compressIpv6(hextets),
+    expanded: hextets.map((part) => part.toString(16).padStart(4, "0")).join(":"),
+  };
+}
+
+export function calculateIpv6Cidr(value: string) {
+  const input = value.trim();
+  assertSafeInput(input);
+  const separator = input.lastIndexOf("/");
+  if (separator <= 0) throw new Error("請輸入 IPv6 prefix，例如 2001:db8::1/64。 ");
+  const rawAddress = input.slice(0, separator);
+  const hasOpeningBracket = rawAddress.startsWith("[");
+  const hasClosingBracket = rawAddress.endsWith("]");
+  if (hasOpeningBracket !== hasClosingBracket) throw new Error("IPv6 位址的方括號不完整。 ");
+  const addressText = hasOpeningBracket ? rawAddress.slice(1, -1) : rawAddress;
+  const prefixText = input.slice(separator + 1);
+  if (!/^\d{1,3}$/.test(prefixText)) throw new Error("IPv6 prefix length 必須是 0 到 128 的整數。 ");
+  const prefix = Number(prefixText);
+  if (prefix < 0 || prefix > 128) throw new Error("IPv6 prefix length 必須介於 0 到 128。 ");
+  const hextets = parseIpv6Hextets(addressText);
+  const address = BigInt(`0x${hextets.map((part) => part.toString(16).padStart(4, "0")).join("")}`);
+  const allBits = (1n << 128n) - 1n;
+  const hostBits = 128 - prefix;
+  const hostMask = hostBits === 0 ? 0n : (1n << BigInt(hostBits)) - 1n;
+  const networkValue = address & (allBits ^ hostMask);
+  const lastValue = networkValue | hostMask;
+  const network = bigintToIpv6(networkValue);
+  const last = bigintToIpv6(lastValue);
+  const fullHex = network.expanded.replace(/:/g, "");
+  const reverseZone = prefix % 4 === 0
+    ? `${fullHex.slice(0, prefix / 4).split("").reverse().join(".")}${prefix ? "." : ""}ip6.arpa`
+    : null;
+  return {
+    prefix,
+    network: `${network.normalized}/${prefix}`,
+    expandedNetwork: `${network.expanded}/${prefix}`,
+    firstAddress: network.normalized,
+    lastAddress: last.normalized,
+    addressCount: (1n << BigInt(hostBits)).toString(),
+    reverseZone,
+  };
+}
+
+export type HttpParameter = { name: string; value: string };
+
+export function parseHttpMessage(value: string) {
+  assertSafeInput(value);
+  const normalized = value.replace(/\r\n/g, "\n");
+  const boundary = normalized.indexOf("\n\n");
+  const head = boundary >= 0 ? normalized.slice(0, boundary) : normalized;
+  const body = boundary >= 0 ? normalized.slice(boundary + 2) : "";
+  const rawLines = head.split("\n");
+  const startLine = rawLines.shift()?.trim() ?? "";
+  if (!startLine) throw new Error("缺少 HTTP Request／Response 起始行。 ");
+  const requestMatch = startLine.match(/^([A-Z!#$%&'*+.^_`|~-]+)\s+(\S+)\s+(HTTP\/\d(?:\.\d)?)$/);
+  const responseMatch = startLine.match(/^(HTTP\/\d(?:\.\d)?)\s+(\d{3})(?:\s+(.*))?$/);
+  if (!requestMatch && !responseMatch) throw new Error("無法辨識 HTTP 起始行。 ");
+
+  const lines: string[] = [];
+  for (const line of rawLines) {
+    if (/^[\t ]/.test(line) && lines.length) lines[lines.length - 1] += ` ${line.trim()}`;
+    else lines.push(line);
+  }
+  const headers: Array<{ name: string; value: string }> = [];
+  const headerMap = new Map<string, string[]>();
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const colon = line.indexOf(":");
+    if (colon <= 0) throw new Error(`無法解析 Header：${line.slice(0, 80)}。 `);
+    const name = line.slice(0, colon).trim();
+    const headerValue = line.slice(colon + 1).trim();
+    headers.push({ name, value: headerValue });
+    const lower = name.toLowerCase();
+    headerMap.set(lower, [...(headerMap.get(lower) ?? []), headerValue]);
+  }
+  const values = (name: string) => headerMap.get(name) ?? [];
+  const first = (name: string) => values(name)[0] ?? "";
+  const warnings: string[] = [];
+  const contentLengths = values("content-length");
+  const actualBodyBytes = new TextEncoder().encode(body).length;
+  if (contentLengths.length > 1 && new Set(contentLengths).size > 1) warnings.push("存在互相衝突的 Content-Length，可能造成 HTTP parsing ambiguity。");
+  if (contentLengths.length && !contentLengths.every((item) => /^\d+$/.test(item))) warnings.push("Content-Length 不是有效的非負整數。");
+  else if (contentLengths.length && Number(contentLengths[0]) !== actualBodyBytes) warnings.push(`Content-Length 為 ${contentLengths[0]}，實際 Body 是 ${actualBodyBytes} bytes。`);
+  if (contentLengths.length && values("transfer-encoding").length) warnings.push("同時出現 Content-Length 與 Transfer-Encoding，需檢查 Request Smuggling 風險。");
+  if (values("authorization").length) warnings.push("包含 Authorization credential，分享前請先遮罩。");
+  if (values("cookie").length || values("set-cookie").length) warnings.push("包含 Cookie，可能含有 Session 或追蹤識別資訊。");
+
+  let method = "";
+  let target = "";
+  let version = "";
+  let status = "";
+  let reason = "";
+  const query: HttpParameter[] = [];
+  if (requestMatch) {
+    [, method, target, version] = requestMatch;
+    if (version === "HTTP/1.1" && !first("host") && !/^https?:\/\//i.test(target)) warnings.push("HTTP/1.1 Request 缺少 Host Header。");
+    try {
+      const url = new URL(target, "https://placeholder.invalid");
+      for (const [name, parameterValue] of url.searchParams) query.push({ name, value: parameterValue });
+    } catch { warnings.push("Request target 不是可解析的 URL／Path。"); }
+  } else if (responseMatch) {
+    [, version, status, reason = ""] = responseMatch;
+  }
+  const cookies: HttpParameter[] = [];
+  for (const cookieHeader of values("cookie")) {
+    for (const item of cookieHeader.split(";")) {
+      const equals = item.indexOf("=");
+      cookies.push({ name: (equals >= 0 ? item.slice(0, equals) : item).trim(), value: equals >= 0 ? item.slice(equals + 1).trim() : "" });
+    }
+  }
+  for (const setCookie of values("set-cookie")) {
+    const pair = setCookie.split(";", 1)[0];
+    const equals = pair.indexOf("=");
+    cookies.push({ name: (equals >= 0 ? pair.slice(0, equals) : pair).trim(), value: equals >= 0 ? pair.slice(equals + 1).trim() : "" });
+  }
+  const bodyParameters: HttpParameter[] = [];
+  if (/application\/x-www-form-urlencoded/i.test(first("content-type"))) {
+    for (const [name, parameterValue] of new URLSearchParams(body)) bodyParameters.push({ name, value: parameterValue });
+  }
+  let json: unknown = null;
+  let jsonValid: boolean | null = null;
+  if (/application\/(?:[\w.+-]+\+)?json/i.test(first("content-type")) && body.trim()) {
+    try { json = JSON.parse(body); jsonValid = true; }
+    catch { jsonValid = false; warnings.push("Content-Type 是 JSON，但 Body 無法解析為有效 JSON。"); }
+  }
+  return {
+    type: requestMatch ? "request" as const : "response" as const,
+    startLine,
+    method,
+    target,
+    version,
+    status,
+    statusCode: status ? Number(status) : null,
+    reason,
+    headers,
+    query,
+    cookies,
+    body,
+    bodyBytes: actualBodyBytes,
+    bodyParameters,
+    json,
+    jsonValid,
+    warnings,
+  };
+}
+
+export type DecodingLayer = { format: string; beforeLength: number; afterLength: number; preview: string };
+
+export function decodeLayered(value: string, maxLayers = 8) {
+  assertSafeInput(value);
+  if (!Number.isInteger(maxLayers) || maxLayers < 1 || maxLayers > 12) throw new Error("最多解碼層數必須介於 1 到 12。 ");
+  let current = value.trim();
+  const seen = new Set([current]);
+  const steps: DecodingLayer[] = [];
+  for (let index = 0; index < maxLayers; index += 1) {
+    const candidates: Array<{ format: string; decode: () => string | null }> = [
+      { format: "URL percent encoding", decode: () => /%[a-f0-9]{2}/i.test(current) ? decodeURIComponent(current) : null },
+      { format: "JavaScript escape", decode: () => /\\(?:u\{[a-f0-9]{1,6}\}|u[a-f0-9]{4}|x[a-f0-9]{2})/i.test(current) ? decodeEscapedText(current, "javascript") : null },
+      { format: "HTML numeric entity", decode: () => /&#(?:x[a-f0-9]+|\d+);?/i.test(current) ? decodeEscapedText(current, "html-numeric") : null },
+      { format: "Hex UTF-8", decode: () => {
+        const compact = current.replace(/[\s:-]/g, "").replace(/^0x/i, "");
+        if (compact.length < 4 || compact.length % 2 || !/^[a-f0-9]+$/i.test(compact)) return null;
+        try { return new TextDecoder("utf-8", { fatal: true }).decode(hexToBytes(compact)); } catch { return null; }
+      } },
+      { format: "Base64 UTF-8", decode: () => {
+        const compact = current.replace(/\s/g, "");
+        if (compact.length < 8 || compact.length % 4 === 1 || !/^[A-Za-z0-9+/_-]+={0,2}$/.test(compact)) return null;
+        const standard = compact.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(compact.length / 4) * 4, "=");
+        try { return base64ToUtf8(standard); } catch { return null; }
+      } },
+    ];
+    let decoded: { format: string; output: string } | null = null;
+    for (const candidate of candidates) {
+      try {
+        const output = candidate.decode();
+        if (output !== null && output !== current) { decoded = { format: candidate.format, output }; break; }
+      } catch { /* 該格式不成立時交給下一個安全 decoder */ }
+    }
+    if (!decoded || seen.has(decoded.output)) break;
+    assertSafeInput(decoded.output);
+    steps.push({ format: decoded.format, beforeLength: current.length, afterLength: decoded.output.length, preview: decoded.output.slice(0, 320) });
+    current = decoded.output;
+    seen.add(current);
+  }
+  return { final: current, steps, reachedLimit: steps.length === maxLayers };
+}

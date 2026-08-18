@@ -12,6 +12,7 @@ import {
   bytesToBase64,
   bytesToHex,
   calculateCidr,
+  calculateIpv6Cidr,
   calculateCvss,
   calculateEntropy,
   calculateChmod,
@@ -20,6 +21,7 @@ import {
   convertNumberBase,
   decodeJwtPart,
   decodeEscapedText,
+  decodeLayered,
   decodeTimestamp,
   defang,
   estimatePassword,
@@ -32,6 +34,7 @@ import {
   refang,
   numbersToAscii,
   packInteger,
+  parseHttpMessage,
   unpackInteger,
   xorTransform,
   gcdBigInt,
@@ -69,6 +72,11 @@ function TextArea({ label, value, onChange, placeholder, rows = 8 }: { label: st
       <textarea rows={rows} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} spellCheck={false} />
     </label>
   );
+}
+
+function HttpParameterList({ title, values }: { title: string; values: Array<{ name: string; value: string }> }) {
+  if (!values.length) return null;
+  return <section><div><strong>{title}</strong><span>{values.length}</span></div><ul>{values.map((item, index) => <li key={`${item.name}-${index}`}><code>{item.name}</code><span>=</span><code>{item.value}</code></li>)}</ul></section>;
 }
 
 function CodecTool({ mode }: { mode: "base64" | "url" }) {
@@ -410,6 +418,41 @@ function UnicodeEscapeTool() {
   return <div className="single-workbench"><div className="warning-banner"><strong>只做字串轉換，不執行程式碼</strong><span>未知的跳脫片段會保留原樣；HTML 模式只處理 numeric entity，不解析 named entity 或標籤。</span></div><label className="field field--short"><span>格式</span><select value={format} onChange={(event) => { setFormat(event.target.value as EscapeFormat); setOutput(""); }}><option value="javascript">JavaScript \\u／\\x escape</option><option value="codepoints">Unicode code points</option><option value="html-numeric">HTML numeric entities</option></select></label><div className="workbench-grid"><div><TextArea label="輸入" value={input} onChange={setInput} placeholder={placeholders[format]} rows={10} /><div className="button-row"><button className="primary-button" type="button" onClick={() => run("decode")}>解碼</button><button className="ghost-button" type="button" onClick={() => run("encode")}>編碼</button></div><ErrorNotice message={error} /></div><div><TextArea label="結果" value={output} onChange={setOutput} placeholder="結果會以純文字顯示" rows={10} /><CopyButton value={output} /></div></div></div>;
 }
 
+function Ipv6CidrTool() {
+  const [input, setInput] = useState("2001:db8:1234:5678::1/64");
+  const [result, setResult] = useState<ReturnType<typeof calculateIpv6Cidr> | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setResult(calculateIpv6Cidr(input)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "IPv6 prefix 解析失敗。 "); }
+  }
+  const labels = { network: "正規化網段", expandedNetwork: "完整展開網段", firstAddress: "第一個位址", lastAddress: "最後一個位址", addressCount: "總位址數" };
+  return <div className="single-workbench"><label className="field"><span>IPv6 / Prefix</span><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") run(); }} placeholder="2001:db8:1234:5678::1/64" spellCheck={false} /></label><button className="primary-button" type="button" onClick={run}>計算 IPv6 網段</button><ErrorNotice message={error} />{result && <div className="ipv6-cidr-report"><div className="timestamp-results">{Object.entries(labels).map(([key, label]) => <div key={key}><span>{label}</span><code>{String(result[key as keyof typeof labels])}</code></div>)}</div>{result.reverseZone ? <div className="result-block"><span>REVERSE DNS ZONE</span><code>{result.reverseZone}</code><CopyButton value={result.reverseZone} label="複製 Zone" /></div> : <div className="warning-list"><strong>Reverse DNS 提醒</strong><ul><li>Prefix /{result.prefix} 不是 nibble boundary（4 的倍數），無法直接產生單一 ip6.arpa delegation zone。</li></ul></div>}</div>}</div>;
+}
+
+function HttpMessageTool() {
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState<ReturnType<typeof parseHttpMessage> | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setResult(parseHttpMessage(input)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "HTTP 訊息解析失敗。 "); }
+  }
+  return <div className="single-workbench"><div className="warning-banner"><strong>只解析，不會重送 HTTP 訊息</strong><span>可貼入 Burp Suite、Proxy、封包或 Log 內容；Authorization 與 Cookie 請先確認是否需要遮罩。</span></div><TextArea label="原始 HTTP Request 或 Response" value={input} onChange={setInput} placeholder={"POST /login?next=%2Fadmin HTTP/1.1\nHost: example.test\nContent-Type: application/x-www-form-urlencoded\nContent-Length: 23\n\nuser=admin&pass=test"} rows={14} /><button className="primary-button" type="button" onClick={run}>解析 HTTP 訊息</button><ErrorNotice message={error} />{result && <div className="http-message-report"><div className="file-verdict"><span>{result.type === "request" ? "HTTP REQUEST" : "HTTP RESPONSE"}</span><strong>{result.startLine}</strong></div>{result.warnings.length > 0 && <div className="warning-list"><strong>{result.warnings.length} 個注意事項</strong><ul>{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}<div className="stat-grid"><div><span>{result.type === "request" ? "METHOD" : "STATUS"}</span><strong>{result.type === "request" ? result.method : result.status}</strong></div><div><span>VERSION</span><strong>{result.version}</strong></div><div><span>HEADERS</span><strong>{result.headers.length}</strong></div><div><span>BODY BYTES</span><strong>{result.bodyBytes}</strong></div></div><div className="http-parameter-grid"><HttpParameterList title="QUERY" values={result.query} /><HttpParameterList title="COOKIES" values={result.cookies} /><HttpParameterList title="FORM BODY" values={result.bodyParameters} /></div>{result.jsonValid && <div className="result-block"><span>JSON BODY</span><code>{JSON.stringify(result.json, null, 2)}</code></div>}<details className="received-chain"><summary>Headers（{result.headers.length}）</summary><ol>{result.headers.map((header, index) => <li key={`${header.name}-${index}`}><code>{header.name}: {header.value}</code></li>)}</ol></details>{result.body && <details className="received-chain"><summary>Raw Body（{result.bodyBytes} bytes）</summary><pre>{result.body}</pre></details>}</div>}</div>;
+}
+
+function LayeredDecoderTool() {
+  const [input, setInput] = useState("");
+  const [maxLayers, setMaxLayers] = useState(8);
+  const [result, setResult] = useState<ReturnType<typeof decodeLayered> | null>(null);
+  const [error, setError] = useState("");
+  function run() {
+    try { setResult(decodeLayered(input, maxLayers)); setError(""); }
+    catch (cause) { setResult(null); setError(cause instanceof Error ? cause.message : "多層解碼失敗。 "); }
+  }
+  return <div className="single-workbench"><div className="warning-banner"><strong>最多 12 層，單層輸出上限 2 MB</strong><span>只執行已知的字串 decoder，不會 eval、執行腳本或開啟解出的網址。</span></div><TextArea label="多層編碼字串" value={input} onChange={setInput} placeholder="%5A%6D%78%68%5A%77%3D%3D" rows={9} /><label className="field field--short"><span>最多解碼層數</span><select value={maxLayers} onChange={(event) => setMaxLayers(Number(event.target.value))}>{[3,5,8,10,12].map((value) => <option key={value} value={value}>{value} layers</option>)}</select></label><button className="primary-button" type="button" onClick={run}>自動逐層解碼</button><ErrorNotice message={error} />{result && <div className="layered-report"><div className="layered-report__summary"><strong>{result.steps.length} 層</strong><span>{result.reachedLimit ? "已達設定上限，請人工確認是否繼續。" : result.steps.length ? "已停止於無法安全辨識的格式。" : "未辨識到可安全自動解碼的格式。"}</span></div>{result.steps.length > 0 && <ol>{result.steps.map((step, index) => <li key={`${step.format}-${index}`}><span>{index + 1}</span><div><strong>{step.format}</strong><small>{step.beforeLength} → {step.afterLength} characters</small><code>{step.preview}</code></div></li>)}</ol>}<TextArea label="最終結果" value={result.final} onChange={(final) => setResult({ ...result, final })} rows={8} /><CopyButton value={result.final} /></div>}</div>;
+}
+
 export function ToolWorkbench({ slug }: { slug: string }) {
   switch (slug) {
     case "base64-codec": return <CodecTool mode="base64" />;
@@ -443,6 +486,9 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "otp-generator": return <OtpTool />;
     case "ip-address-converter": return <IpAddressTool />;
     case "unicode-escape-codec": return <UnicodeEscapeTool />;
+    case "ipv6-cidr-calculator": return <Ipv6CidrTool />;
+    case "http-message-parser": return <HttpMessageTool />;
+    case "layered-decoder": return <LayeredDecoderTool />;
     default: return null;
   }
 }
