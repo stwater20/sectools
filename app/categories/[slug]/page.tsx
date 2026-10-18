@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const title = `${category.title}｜${count} 個免費線上工具`;
   return {
     title,
-    description: `${category.summary} 全部免費、免登入，資料只在瀏覽器本機處理。`,
+    description: `${category.summary}全部免費、免註冊，資料只在瀏覽器本機處理。`,
     alternates: { canonical: `/categories/${category.slug}/` },
     openGraph: {
       type: "website",

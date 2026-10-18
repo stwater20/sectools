@@ -407,3 +407,14 @@ test("Unicode escape codec handles JavaScript, code points, and numeric entities
   assert.equal(decodeEscapedText("&#x66;&#108;ag", "html-numeric"), "flag");
   assert.equal(encodeEscapedText("資😀", "codepoints"), "U+8CC7 U+1F600");
 });
+
+test("single-byte XOR brute force ranks English and CTF flags first", () => {
+  for (const plaintext of ["flag{x0r_is_fun}", "picoCTF{s1ngl3_byt3}", "attack at dawn"]) {
+    for (const key of [0x01, 0x5a, 0xff]) {
+      const hex = Buffer.from(plaintext, "latin1").map((byte) => byte ^ key).toString("hex");
+      const [best] = bruteForceSingleByteXor(hex);
+      assert.equal(best.key, key);
+      assert.equal(best.text, plaintext);
+    }
+  }
+});

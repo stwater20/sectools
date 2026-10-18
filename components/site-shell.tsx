@@ -50,7 +50,7 @@ export function SiteFooter() {
       <div className="site-footer__inner">
         <div className="site-footer__intro">
           <Brand />
-          <p>給防守者、研究者與開發者的免費資安工作台。{toolCatalog.length} 個工具全部在瀏覽器本機運算，不上傳、不追蹤、免登入。</p>
+          <p>給資安工程師、SOC 分析師、開發者與 CTF 玩家的免費工具箱。{toolCatalog.length} 個工具全部在瀏覽器本機執行，不上傳、不追蹤、免註冊。</p>
           <Link className="site-footer__about" href="/about/">關於與隱私承諾 →</Link>
         </div>
         <nav className="site-footer__nav" aria-label="工具分類">

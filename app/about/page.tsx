@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     title: "關於 SecTools.tw 與隱私承諾",
     description: "開放原始碼、完全在瀏覽器本機運算的繁體中文資安工具箱：不上傳、不追蹤、可自行部署。",
     url: "/about/",
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "SecTools.tw 真正能用的資安工具箱" }],
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "SecTools.tw 免費線上資安工具箱" }],
   },
 };
 

@@ -15,7 +15,7 @@ export default function Home() {
       alternateName: ["SecTools", "SecTools.tw 資安工具箱"],
       url: `${siteUrl}/`,
       inLanguage: siteLocale,
-      description: "隱私優先、完全在瀏覽器本機運算的免費資安工具箱。",
+      description: "免費線上資安工具箱，所有運算都在瀏覽器本機完成，資料不會上傳。",
       publisher: { "@id": `${siteUrl}/#organization` },
       potentialAction: {
         "@type": "SearchAction",
@@ -57,10 +57,10 @@ export default function Home() {
           <div className="container">
             <div className="section-heading">
               <div>
-                <span className="section-kicker">BY WORKFLOW / 02</span>
-                <h2 id="categories-title">依工作情境找工具</h2>
+                <span className="section-kicker">02 · CATEGORIES</span>
+                <h2 id="categories-title">依工作情境挑工具</h2>
               </div>
-              <p>從事件調查到 CTF，每個分類都整理了最常用的工具組合。</p>
+              <p>事件調查、網路設定、身分驗證、數位鑑識到 CTF，每個分類收錄該情境最常用的工具。</p>
             </div>
             <div className="category-grid">
               {categories.map((category, index) => {
@@ -88,15 +88,15 @@ export default function Home() {
           <div className="container privacy-grid">
             <div className="privacy-stamp" aria-hidden="true"><strong>LOCAL</strong><span>ONLY</span></div>
             <div>
-              <span className="section-kicker">PRIVACY BY DESIGN / 03</span>
-              <h2>你的資料，<br />不該成為別人的資料。</h2>
+              <span className="section-kicker">03 · PRIVACY</span>
+              <h2>敏感資料，<br />留在你的電腦裡。</h2>
             </div>
             <div className="privacy-copy">
-              <p>工具使用瀏覽器原生能力完成運算；沒有 API 傳輸、沒有分析腳本，也沒有伺服器紀錄你的輸入。</p>
+              <p>多數線上工具會把你貼上的內容送到伺服器處理。SecTools.tw 不這麼做：所有運算都由瀏覽器內建的 JavaScript 與 Web Crypto API 完成，沒有後端、沒有分析腳本，沒有人看得到你的輸入。</p>
               <ul>
-                <li><span>01</span> 輸入與結果只存在於目前分頁</li>
-                <li><span>02</span> 收藏與最近使用僅存於本機</li>
-                <li><span>03</span> 原始碼可稽核、可自行部署</li>
+                <li><span>01</span> 輸入與結果只存在目前分頁，關掉就消失</li>
+                <li><span>02</span> 收藏與最近使用只記工具名稱，存在你的瀏覽器</li>
+                <li><span>03</span> 原始碼公開，可以稽核，也能部署到內網</li>
               </ul>
               <Link className="text-link" href="/about/">閱讀完整隱私承諾 →</Link>
             </div>
@@ -106,7 +106,7 @@ export default function Home() {
         <section className="container home-faq" aria-labelledby="home-faq-title">
           <div className="section-heading">
             <div>
-              <span className="section-kicker">FAQ / 04</span>
+              <span className="section-kicker">04 · FAQ</span>
               <h2 id="home-faq-title">常見問題</h2>
             </div>
           </div>
@@ -134,8 +134,8 @@ export default function Home() {
 }
 
 const homeFaqs = [
-  { question: "SecTools.tw 的工具需要付費或註冊嗎？", answer: `不需要。全部 ${toolCatalog.length} 個工具免費使用、免登入，也沒有廣告或使用次數限制。` },
-  { question: "我貼上的 JWT、密碼或日誌會被上傳嗎？", answer: "不會。所有運算都使用瀏覽器原生的 JavaScript 與 Web Crypto API 在本機完成，工具不會發出任何網路請求，你可以在開發者工具的 Network 面板自行驗證。" },
-  { question: "可以離線或在內網環境使用嗎？", answer: "工具頁面載入後，即使中斷網路也能繼續操作該工具。原始碼公開於 GitHub，也可以自行建置靜態檔案部署到內網伺服器。" },
-  { question: "工具結果可以直接作為正式報告的依據嗎？", answer: "工具適合快速分析與交叉核對。重要事件仍應保留原始證據，並以正式的驗證或鑑識流程確認結果。" },
+  { question: "要付費或註冊嗎？", answer: `都不用。${toolCatalog.length} 個工具全部免費，不需要帳號，也沒有廣告與次數限制。` },
+  { question: "貼上的 JWT、密碼或日誌會被上傳嗎？", answer: "不會。運算全部在你的瀏覽器裡完成，工具不會發出任何網路請求。打開開發者工具的 Network 面板，就能自己確認。" },
+  { question: "可以離線或在內網使用嗎？", answer: "可以。工具頁面載入後，斷網也能繼續運算。原始碼公開在 GitHub，也可以自行建置成靜態網站，部署到公司內網。" },
+  { question: "結果可以直接寫進正式報告嗎？", answer: "建議當作初步分析與交叉比對使用。重要事件請保留原始證據，並以正式的驗證或鑑識流程確認。" },
 ];

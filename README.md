@@ -39,6 +39,13 @@ npm run dev
 npm run check
 ```
 
+瀏覽器端對端測試（逐一驗證 40 個工具的計算結果、搜尋與收藏流程，並檢查各頁在 320–1280px 不會水平溢出；需先 build）：
+
+```bash
+npx playwright install chromium   # 第一次執行時
+npm run test:e2e
+```
+
 靜態輸出位於 `out/`。
 
 ## GitHub Pages
@@ -75,7 +82,8 @@ Cloudflare 端也應關閉 Zaraz 與 Web Analytics 自動注入，避免加入�
 1. 在 `lib/tool-catalog.ts` 加入工具 metadata（分類需已存在於 `categories`；新增分類時一併填寫 `slug`、`summary` 與 `intro`）。
 2. 在 `components/tool-workbench.tsx` 實作純前端操作介面。
 3. 將可測試的核心運算放進 `lib/tool-utils.ts`，補上測試。
-4. 執行 `npm run check`，確認靜態輸出與所有工具頁都成功產生。
+4. 在 `tests/e2e/site.e2e.mjs` 的 `specs` 加入該工具的瀏覽器測試（輸入樣本與預期結果）。
+5. 執行 `npm run check` 與 `npm run test:e2e`。
 
 ## 授權
 

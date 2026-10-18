@@ -416,13 +416,33 @@ export function xorTransform(input: string, key: string, inputHex = false, keyHe
   return { hex: Array.from(output, (byte) => byte.toString(16).padStart(2, "0")).join(""), text: new TextDecoder().decode(output) };
 }
 
+// Relative English letter frequencies (%), used to rank plausible plaintexts.
+const englishFrequency: Record<string, number> = { a: 8.2, b: 1.5, c: 2.8, d: 4.3, e: 12.7, f: 2.2, g: 2, h: 6.1, i: 7, j: 0.15, k: 0.8, l: 4, m: 2.4, n: 6.7, o: 7.5, p: 1.9, q: 0.1, r: 6, s: 6.3, t: 9.1, u: 2.8, v: 1, w: 2.4, x: 0.15, y: 2, z: 0.07 };
+
+function plaintextScore(output: Uint8Array) {
+  let score = 0;
+  for (const byte of output) {
+    const character = String.fromCharCode(byte);
+    if (byte === 32) score += 3;
+    else if (byte >= 97 && byte <= 122) score += 1 + englishFrequency[character] / 4;
+    else if (byte >= 65 && byte <= 90) score += 0.5 + englishFrequency[character.toLowerCase()] / 8;
+    else if (byte >= 48 && byte <= 57) score += 0.5;
+    else if ("{}_.,'!?-:;()\"".includes(character)) score += 0.3;
+    else if (byte === 9 || byte === 10 || byte === 13) score += 0.5;
+    else if (byte > 32 && byte < 127) score -= 1;
+    else score -= 10;
+  }
+  const text = new TextDecoder("latin1").decode(output);
+  if (/(?:flag|ctf|key)\{[\x20-\x7e]*\}?/i.test(text)) score += 25;
+  return score;
+}
+
 export function bruteForceSingleByteXor(value: string) {
   const bytes = hexToBytes(value);
   return Array.from({ length: 256 }, (_, key) => {
     const output = bytes.map((byte) => byte ^ key);
     const text = Array.from(output, (byte) => byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : ".").join("");
-    const score = Array.from(output).reduce((total, byte) => total + (byte === 32 ? 3 : /[ETAOINetaoin]/.test(String.fromCharCode(byte)) ? 2 : byte >= 32 && byte <= 126 ? 0.2 : -4), 0);
-    return { key, hexKey: key.toString(16).padStart(2, "0"), text, score };
+    return { key, hexKey: key.toString(16).padStart(2, "0"), text, score: plaintextScore(output) };
   }).sort((a, b) => b.score - a.score).slice(0, 12);
 }
 

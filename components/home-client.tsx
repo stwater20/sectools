@@ -109,9 +109,9 @@ export function HomeClient({ tools, categories }: { tools: ToolSummary[]; catego
         <div className="hero__texture" aria-hidden="true" />
         <div className="container hero__inner">
           <div className="hero__main">
-          <div className="eyebrow"><span /> SECTOOLS.TW OPEN TOOLKIT</div>
-          <h1>真正能用的<br /><em>資安工具箱。</em></h1>
-          <p className="hero__lead">為資安工程師、SOC 分析師、開發者與 CTF 選手打造的 {tools.length} 個免費線上工具。免登入、不上傳，所有運算都在你的瀏覽器裡完成。</p>
+          <div className="eyebrow"><span /> FREE · LOCAL-ONLY · OPEN SOURCE</div>
+          <h1>資安日常工具，<br /><em>資料不出瀏覽器。</em></h1>
+          <p className="hero__lead">JWT 解碼、Hash 計算、CIDR 換算、CVSS 評分、IOC 擷取⋯⋯{tools.length} 個資安工程師、SOC 分析師與 CTF 玩家天天用到的工具，打開就能用。不用註冊、沒有廣告，貼上的內容只在你的電腦上運算。</p>
           <div className="hero-search" role="search">
             <svg className="hero-search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></svg>
             <label className="sr-only" htmlFor="tool-search">搜尋資安工具</label>
@@ -134,15 +134,15 @@ export function HomeClient({ tools, categories }: { tools: ToolSummary[]; catego
           </div>
           <dl className="hero__stats">
             <div><dt>免費工具</dt><dd>{tools.length}</dd></div>
-            <div><dt>上傳到伺服器的資料</dt><dd>0 B</dd></div>
-            <div><dt>需要註冊</dt><dd>不用</dd></div>
+            <div><dt>伺服器收到的資料</dt><dd>0 B</dd></div>
+            <div><dt>註冊與登入</dt><dd>免</dd></div>
             <div><dt>工具分類</dt><dd>{categories.length}</dd></div>
           </dl>
           </div>
           <aside className="hero__aside" aria-labelledby="popular-title">
             <div className="hero__aside-head">
               <span className="hero__dots" aria-hidden="true"><i /><i /><i /></span>
-              <h2 id="popular-title">最常用的工具</h2>
+              <h2 id="popular-title">大家最常開的工具</h2>
             </div>
             <ol>
               {popularSlugs.map((slug) => tools.find((tool) => tool.slug === slug)).filter((tool): tool is ToolSummary => Boolean(tool)).map((tool) => (
@@ -155,7 +155,7 @@ export function HomeClient({ tools, categories }: { tools: ToolSummary[]; catego
                 </li>
               ))}
             </ol>
-            <p><i className="pulse-dot" /> 全部在本機執行 · 0 個網路請求</p>
+            <p><i className="pulse-dot" /> 全部在本機執行，不發出任何網路請求</p>
           </aside>
         </div>
       </section>
@@ -163,10 +163,10 @@ export function HomeClient({ tools, categories }: { tools: ToolSummary[]; catego
       <section className="tool-library container" id="tools" ref={libraryRef} aria-labelledby="tools-title">
         <div className="section-heading">
           <div>
-            <span className="section-kicker">FIELD KIT / 01</span>
-            <h2 id="tools-title">工具庫</h2>
+            <span className="section-kicker">01 · TOOLS</span>
+            <h2 id="tools-title">全部工具</h2>
           </div>
-          <p>點 ☆ 收藏常用工具；在任何頁面按 <kbd>Ctrl</kbd> + <kbd>K</kbd> 都能快速搜尋。</p>
+          <p>按 ☆ 把常用工具加入收藏；在任何頁面按 <kbd>Ctrl</kbd> + <kbd>K</kbd> 都能直接搜尋。</p>
         </div>
 
         <div className="category-tabs" role="group" aria-label="工具分類篩選">
@@ -204,7 +204,7 @@ export function HomeClient({ tools, categories }: { tools: ToolSummary[]; catego
           <div className="empty-state">
             <span aria-hidden="true">⌕</span>
             <h3>{category === favoritesLabel && !query ? "還沒有收藏的工具" : "沒有找到相符工具"}</h3>
-            <p>{category === favoritesLabel && !query ? "在工具卡片上點 ☆，常用工具就會出現在這裡（只存在你的瀏覽器）。" : "試試英文名稱，例如「jwt」、「hash」、「pcap」，或清除目前篩選。"}</p>
+            <p>{category === favoritesLabel && !query ? "在工具卡片上按 ☆，常用的工具就會集中在這裡。收藏只存在你的瀏覽器。" : "換個說法試試，例如英文名稱「jwt」、「hash」、「pcap」，或清除篩選。"}</p>
             <button type="button" onClick={() => { setQuery(""); setCategory(allLabel); }}>查看全部工具</button>
           </div>
         )}

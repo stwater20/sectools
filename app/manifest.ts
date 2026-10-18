@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: siteName,
     short_name: siteShortName,
-    description: `${toolCatalog.length} 個隱私優先、完全在瀏覽器本機運算的免費資安工具。`,
+    description: `${toolCatalog.length} 個免費線上資安工具，資料只在瀏覽器本機運算。`,
     lang: "zh-Hant-TW",
     start_url: "/",
     scope: "/",

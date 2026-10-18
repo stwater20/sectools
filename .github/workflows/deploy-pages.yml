@@ -42,6 +42,10 @@ jobs:
           fi
       - run: npm ci
       - run: npm run check
+      - name: Browser end-to-end tests
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out
