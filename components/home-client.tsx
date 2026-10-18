@@ -32,7 +32,7 @@ function ToolCard({ tool, favorite }: { tool: ToolSummary; favorite: boolean }) 
       >
         {favorite ? "★" : "☆"}
       </button>
-      <span className="tool-card__launch" aria-hidden="true">開啟 <span>→</span></span>
+      <span className="tool-card__launch" aria-hidden="true">開啟工具 <span>→</span></span>
     </article>
   );
 }
@@ -106,11 +106,14 @@ export function HomeClient({ tools, categories }: { tools: ToolSummary[]; catego
   return (
     <>
       <section className="hero">
-        <div className="hero__texture" aria-hidden="true" />
+        <div className="hero__glow" aria-hidden="true"><span /><span /><span /></div>
         <div className="container hero__inner">
-          <div className="hero__main">
-          <div className="eyebrow"><span /> FREE · LOCAL-ONLY · OPEN SOURCE</div>
-          <h1>資安日常工具，<br /><em>資料不出瀏覽器。</em></h1>
+          <a className="hero__badge" href="#tools">
+            <i className="pulse-dot" />
+            <span>{tools.length} 個工具・100% 本機運算</span>
+            <b aria-hidden="true">→</b>
+          </a>
+          <h1>資安日常工具，<br /><span className="gradient-text">資料不出瀏覽器。</span></h1>
           <p className="hero__lead">JWT 解碼、Hash 計算、CIDR 換算、CVSS 評分、IOC 擷取⋯⋯{tools.length} 個資安工程師、SOC 分析師與 CTF 玩家天天用到的工具，打開就能用。不用註冊、沒有廣告，貼上的內容只在你的電腦上運算。</p>
           <div className="hero-search" role="search">
             <svg className="hero-search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></svg>
@@ -129,8 +132,54 @@ export function HomeClient({ tools, categories }: { tools: ToolSummary[]; catego
             <kbd aria-hidden="true">/</kbd>
           </div>
           <div className="quick-searches">
-            <span>熱門搜尋</span>
+            <span>熱門</span>
             {quickSearches.map((item) => <button key={item} type="button" onClick={() => runQuickSearch(item)}>{item}</button>)}
+          </div>
+        </div>
+
+        <div className="container hero__shot">
+          <div className="app-window">
+            <div className="app-window__bar">
+              <span className="app-window__dots" aria-hidden="true"><i /><i /><i /></span>
+              <span className="app-window__url" aria-hidden="true"><svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /></svg>tools.sectools.tw/jwt-decoder</span>
+              <span className="app-window__badge" aria-hidden="true"><i className="pulse-dot" />本機處理</span>
+            </div>
+            <div className="app-window__body">
+              <nav className="app-window__side" aria-labelledby="popular-title">
+                <h2 id="popular-title">大家最常開的工具</h2>
+                <ol>
+                  {popularSlugs.map((slug) => tools.find((tool) => tool.slug === slug)).filter((tool): tool is ToolSummary => Boolean(tool)).map((tool, index) => (
+                    <li key={tool.slug}>
+                      <Link className={index === 0 ? "is-current" : ""} href={`/${tool.slug}/`} onClick={() => markRecent(tool.slug)}>
+                        <span aria-hidden="true">{tool.icon}</span>
+                        <strong>{tool.name}</strong>
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+              <div className="app-window__main" aria-hidden="true">
+                <div className="mock-field">
+                  <small>JWT TOKEN</small>
+                  <code><em className="t-a">eyJhbGciOiJIUzI1NiJ9</em>.<em className="t-b">eyJzdWIiOiJhbGljZSIsInJvbGUiOiJhZG1pbiJ9</em>.<em className="t-c">4pcPyMD09olPSyXnrXCjTwXyr4BsezdI1AVTmud2fU4</em></code>
+                </div>
+                <div className="mock-grid">
+                  <div className="mock-panel">
+                    <small>HEADER</small>
+                    <pre>{"{\n  "}<b>&quot;alg&quot;</b>{": "}<i>&quot;HS256&quot;</i>{"\n}"}</pre>
+                  </div>
+                  <div className="mock-panel">
+                    <small>PAYLOAD</small>
+                    <pre>{"{\n  "}<b>&quot;sub&quot;</b>{": "}<i>&quot;alice&quot;</i>{",\n  "}<b>&quot;role&quot;</b>{": "}<i>&quot;admin&quot;</i>{"\n}"}</pre>
+                  </div>
+                </div>
+                <div className="mock-status">
+                  <span className="is-ok">✓ 格式正確</span>
+                  <span className="is-warn">! 未設定 exp 到期時間</span>
+                  <span>0 個網路請求</span>
+                </div>
+              </div>
+            </div>
           </div>
           <dl className="hero__stats">
             <div><dt>免費工具</dt><dd>{tools.length}</dd></div>
@@ -138,34 +187,13 @@ export function HomeClient({ tools, categories }: { tools: ToolSummary[]; catego
             <div><dt>註冊與登入</dt><dd>免</dd></div>
             <div><dt>工具分類</dt><dd>{categories.length}</dd></div>
           </dl>
-          </div>
-          <aside className="hero__aside" aria-labelledby="popular-title">
-            <div className="hero__aside-head">
-              <span className="hero__dots" aria-hidden="true"><i /><i /><i /></span>
-              <h2 id="popular-title">大家最常開的工具</h2>
-            </div>
-            <ol>
-              {popularSlugs.map((slug) => tools.find((tool) => tool.slug === slug)).filter((tool): tool is ToolSummary => Boolean(tool)).map((tool) => (
-                <li key={tool.slug}>
-                  <Link href={`/${tool.slug}/`} onClick={() => markRecent(tool.slug)}>
-                    <span aria-hidden="true">{tool.icon}</span>
-                    <span><strong>{tool.name}</strong><small>{tool.englishName}</small></span>
-                    <b aria-hidden="true">→</b>
-                  </Link>
-                </li>
-              ))}
-            </ol>
-            <p><i className="pulse-dot" /> 全部在本機執行，不發出任何網路請求</p>
-          </aside>
         </div>
       </section>
 
       <section className="tool-library container" id="tools" ref={libraryRef} aria-labelledby="tools-title">
-        <div className="section-heading">
-          <div>
-            <span className="section-kicker">01 · TOOLS</span>
-            <h2 id="tools-title">全部工具</h2>
-          </div>
+        <div className="section-heading section-heading--center">
+          <span className="section-kicker">TOOLS</span>
+          <h2 id="tools-title">全部工具</h2>
           <p>按 ☆ 把常用工具加入收藏；在任何頁面按 <kbd>Ctrl</kbd> + <kbd>K</kbd> 都能直接搜尋。</p>
         </div>
 

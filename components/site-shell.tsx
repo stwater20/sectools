@@ -10,13 +10,10 @@ export function Brand() {
   return (
     <Link className="brand" href="/" aria-label="SecTools.tw Toolkit 首頁">
       <span className="brand-mark" aria-hidden="true">
-        <span />
-        <span />
-        <span />
+        <svg viewBox="0 0 24 24"><path d="M12 3.2 5 6v5.4c0 4.3 3 7.9 7 9.2 4-1.3 7-4.9 7-9.2V6Z" /><path d="m9.5 10 2.5 2.4-2.5 2.4M13 15h2.2" /></svg>
       </span>
       <span className="brand-copy">
-        <strong>SECTOOLS.TW</strong>
-        <small>THE SECURITY TOOLKIT</small>
+        <strong>SecTools<span>.tw</span></strong>
       </span>
     </Link>
   );

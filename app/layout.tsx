@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import { siteLocale, siteName, siteUrl } from "@/lib/site";
 import { toolCatalog } from "@/lib/tool-catalog";
 import "./globals.css";
+
+const inter = localFont({ src: "./fonts/inter-latin-var.woff2", variable: "--font-inter", weight: "100 900", display: "swap" });
 
 const toolCount = toolCatalog.length;
 const shareTitle = `SecTools.tw｜${toolCount} 個免費線上資安工具，資料不出瀏覽器`;
@@ -59,8 +62,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbfbfa" },
-    { media: "(prefers-color-scheme: dark)", color: "#14191c" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#07080b" },
   ],
   colorScheme: "light dark",
 };
@@ -74,7 +77,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang={siteLocale} suppressHydrationWarning>
+    <html lang={siteLocale} className={inter.variable} suppressHydrationWarning>
       <head>
         <meta name="referrer" content="strict-origin-when-cross-origin" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
