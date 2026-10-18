@@ -17,14 +17,80 @@ export type ToolDefinition = {
   };
 };
 
-export const categories: Array<{ name: ToolCategory; label: string }> = [
-  { name: "編碼與雜湊", label: "ENCODE" },
-  { name: "威脅分析", label: "THREAT INTEL" },
-  { name: "網路與風險", label: "NETWORK" },
-  { name: "密碼與驗證", label: "AUTH" },
-  { name: "鑑識與分析", label: "FORENSICS" },
-  { name: "CTF 工具", label: "CTF" },
+export type CategoryDefinition = {
+  name: ToolCategory;
+  label: string;
+  slug: string;
+  title: string;
+  summary: string;
+  intro: string;
+  useCase: string;
+};
+
+export const categories: CategoryDefinition[] = [
+  {
+    name: "編碼與雜湊",
+    label: "ENCODE",
+    slug: "encoding",
+    title: "編碼與雜湊工具",
+    summary: "Base64、URL、Hash、HMAC 與 SRI，處理日常資料格式與完整性驗證。",
+    intro: "從 API 除錯、檔案比對到前端資源完整性，編碼與雜湊是資安工作最常用的基本功。這裡的工具使用瀏覽器 Web Crypto API 計算，正確處理 UTF-8 中文，結果可直接複製到報告或設定檔。",
+    useCase: "處理 API、檔案驗證、資料編碼與惡意程式分析時常見的格式。",
+  },
+  {
+    name: "威脅分析",
+    label: "THREAT INTEL",
+    slug: "threat-intel",
+    title: "威脅分析與事件調查工具",
+    summary: "IOC 擷取、URL defang、郵件標頭與機敏資訊掃描，加速 SOC 告警初判。",
+    intro: "SOC 分析師每天面對告警、釣魚郵件與威脅情資報告。這組工具協助你從雜亂文字中擷取 IOC、安全地分享惡意連結、檢查郵件驗證結果，並在提交程式碼或日誌前掃出外洩的金鑰。",
+    useCase: "整理事件調查、SOC 告警、釣魚郵件與 Threat Intelligence 資料。",
+  },
+  {
+    name: "網路與風險",
+    label: "NETWORK",
+    slug: "network",
+    title: "網路、Web 安全與風險評估工具",
+    summary: "CIDR、IPv6、HTTP、DNS、CSP、安全標頭與 CVSS，涵蓋網路設定到弱點評分。",
+    intro: "從防火牆規則的網段計算、HTTP 與 DNS 封包解析，到 Security Headers、CSP 檢查與 CVSS v3.1 評分，這些工具協助網路與 Web 安全工程師快速完成設定檢查與風險溝通。",
+    useCase: "輔助網路設定、弱點管理、Web 安全檢查與風險溝通。",
+  },
+  {
+    name: "密碼與驗證",
+    label: "AUTH",
+    slug: "auth",
+    title: "密碼、JWT 與身分驗證工具",
+    summary: "JWT 解碼與驗簽、密碼產生、強度檢查與 TOTP，檢視身分驗證流程。",
+    intro: "身分驗證是攻擊者最常鎖定的入口。這組工具讓你在本機解碼並驗證 JWT 簽章、產生高強度密碼、評估密碼強度，以及計算 TOTP／HOTP 驗證碼，敏感資料不會離開瀏覽器。",
+    useCase: "檢查身分驗證、Token、密碼與多因素驗證流程。",
+  },
+  {
+    name: "鑑識與分析",
+    label: "FORENSICS",
+    slug: "forensics",
+    title: "數位鑑識與檔案分析工具",
+    summary: "檔案簽章、PCAP 摘要、字串擷取、Hex 檢視與時間戳轉換，快速初篩證據。",
+    intro: "數位鑑識的第一步通常是快速初篩：這個檔案真的是它宣稱的格式嗎？封包裡有哪些主機？二進位檔藏了什麼字串？這些工具直接在瀏覽器讀取檔案，不上傳證據，適合事件應變現場使用。",
+    useCase: "快速初篩檔案、時間戳與二進位證據，再交由正式鑑識流程確認。",
+  },
+  {
+    name: "CTF 工具",
+    label: "CTF",
+    slug: "ctf",
+    title: "CTF 解題工具",
+    summary: "XOR、Caesar、進位轉換、Pack、RSA 數學與多層解碼，CTF 選手的常備工具。",
+    intro: "Crypto、Pwn、Web 與 Misc 題目常需要反覆轉換資料。這組 CTF 工具整合 XOR 破解、古典密碼枚舉、整數 pack、RSA 數論與多層編碼解碼，讓你專注在解題思路而不是寫一次性腳本。",
+    useCase: "解答密碼學、Pwn、Web 與資料編碼類 CTF 題目。",
+  },
 ];
+
+export function findCategory(slug: string) {
+  return categories.find((category) => category.slug === slug);
+}
+
+export function categoryOf(tool: ToolDefinition) {
+  return categories.find((category) => category.name === tool.category)!;
+}
 
 export const toolCatalog: ToolDefinition[] = [
   {
@@ -432,4 +498,11 @@ export const toolCatalog: ToolDefinition[] = [
 
 export function findTool(slug: string) {
   return toolCatalog.find((tool) => tool.slug === slug);
+}
+
+export function relatedTools(tool: ToolDefinition, limit = 6) {
+  const sameCategory = toolCatalog.filter((item) => item.category === tool.category && item.slug !== tool.slug);
+  const sharedTags = toolCatalog
+    .filter((item) => item.category !== tool.category && item.tags.some((tag) => tool.tags.includes(tag)));
+  return [...sameCategory, ...sharedTags].slice(0, limit);
 }

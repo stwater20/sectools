@@ -15,6 +15,15 @@
 
 每個工具都有獨立靜態網址、SEO metadata、結構化資料與安全使用提醒。
 
+## 網站功能
+
+- **全站快速搜尋**：任何頁面按 `Ctrl/⌘ + K`（或 `/`）開啟搜尋面板，支援中英文、多關鍵字與方向鍵操作。
+- **可分享的篩選網址**：首頁搜尋與分類會同步到網址，例如 `/?q=jwt`、`/?category=ctf`，也作為 Google Sitelinks Search Box 的 `SearchAction`。
+- **分類頁**：`/categories/<slug>/` 為每個分類提供獨立介紹與工具清單，並列入 sitemap。
+- **收藏與最近使用**：首頁卡片與工具頁皆可收藏；造訪工具頁會自動記入最近使用（僅存 slug 於 localStorage）。
+- **深色模式**：預設跟隨系統，可手動切換並記住選擇。
+- **SEO**：每頁具 canonical、Open Graph／Twitter、`WebApplication`／`BreadcrumbList`／`FAQPage`／`ItemList` 結構化資料、Web App Manifest 與 sitemap。
+
 ## 本機開發
 
 需求：Node.js 22.13 或更新版本。
@@ -63,7 +72,7 @@ Cloudflare 端也應關閉 Zaraz 與 Web Analytics 自動注入，避免加入�
 
 ## 新增工具
 
-1. 在 `lib/tool-catalog.ts` 加入工具 metadata。
+1. 在 `lib/tool-catalog.ts` 加入工具 metadata（分類需已存在於 `categories`；新增分類時一併填寫 `slug`、`summary` 與 `intro`）。
 2. 在 `components/tool-workbench.tsx` 實作純前端操作介面。
 3. 將可測試的核心運算放進 `lib/tool-utils.ts`，補上測試。
 4. 執行 `npm run check`，確認靜態輸出與所有工具頁都成功產生。

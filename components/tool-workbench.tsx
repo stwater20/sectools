@@ -59,14 +59,18 @@ import {
 } from "@/lib/tool-utils";
 
 function CopyButton({ value, label = "複製結果" }: { value: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
   async function copy() {
     if (!value) return;
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
+    try {
+      await navigator.clipboard.writeText(value);
+      setStatus("copied");
+    } catch {
+      setStatus("failed");
+    }
+    window.setTimeout(() => setStatus("idle"), 1800);
   }
-  return <button className="secondary-button" type="button" onClick={copy} disabled={!value}>{copied ? "已複製 ✓" : label}</button>;
+  return <button className="secondary-button" type="button" onClick={copy} disabled={!value} aria-live="polite">{status === "copied" ? "已複製 ✓" : status === "failed" ? "無法複製，請手動選取" : label}</button>;
 }
 
 function ErrorNotice({ message }: { message: string }) {

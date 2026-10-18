@@ -1,16 +1,25 @@
 import type { MetadataRoute } from "next";
-import { toolCatalog } from "@/lib/tool-catalog";
+import { absoluteUrl } from "@/lib/site";
+import { categories, toolCatalog } from "@/lib/tool-catalog";
 
 export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tools.sectools.tw";
+  const lastModified = new Date();
   return [
-    { url: siteUrl, changeFrequency: "weekly", priority: 1 },
+    { url: absoluteUrl("/"), lastModified, changeFrequency: "weekly", priority: 1 },
+    ...categories.map((category) => ({
+      url: absoluteUrl(`/categories/${category.slug}/`),
+      lastModified,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    })),
     ...toolCatalog.map((tool) => ({
-      url: `${siteUrl}/${tool.slug}/`,
+      url: absoluteUrl(`/${tool.slug}/`),
+      lastModified,
       changeFrequency: "monthly" as const,
       priority: tool.featured ? 0.8 : 0.7,
     })),
+    { url: absoluteUrl("/about/"), lastModified, changeFrequency: "yearly", priority: 0.4 },
   ];
 }
