@@ -10,7 +10,7 @@ export function Brand() {
   return (
     <Link className="brand" href="/" aria-label="SecTools 資安工具箱 首頁">
       <span className="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M12 3.2 5 6v5.4c0 4.3 3 7.9 7 9.2 4-1.3 7-4.9 7-9.2V6Z" /><path d="m9.5 10 2.5 2.4-2.5 2.4M13 15h2.2" /></svg>
+        <svg viewBox="4 8 56 44"><path className="arch-main" d="M17 39V29c0-8 6-14 14-14s14 6 14 14v10" /><path className="arch-side" d="M9 40V34c0-5 4-9 9-9M55 40v-6c0-5-4-9-9-9" /><path className="arch-base" d="M10 47h44" /></svg>
       </span>
       <span className="brand-copy">
         <strong>SecTools</strong>
