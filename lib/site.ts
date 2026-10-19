@@ -1,5 +1,5 @@
 export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://tools.sectools.tw").replace(/\/$/, "");
-export const siteName = "SecTools.tw Toolkit";
+export const siteName = "SecTools 資安工具箱";
 export const siteShortName = "SecTools";
 export const siteLocale = "zh-Hant-TW";
 

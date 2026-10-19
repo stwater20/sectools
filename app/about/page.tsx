@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteFooter, SiteHeader } from "@/components/site-shell";
+import { siteName } from "@/lib/site";
 import { categories, toolCatalog } from "@/lib/tool-catalog";
 
 export const metadata: Metadata = {
-  title: "關於 SecTools.tw 與隱私承諾",
-  description: "SecTools.tw Toolkit 是開放原始碼、完全在瀏覽器本機運算的繁體中文資安工具箱。了解我們如何處理資料、本機儲存哪些設定，以及如何自行驗證。",
+  title: "關於我們與隱私承諾",
+  description: "SecTools 資安工具箱是開放原始碼、完全在瀏覽器本機運算的繁體中文資安工具箱。了解我們如何處理資料、本機儲存哪些設定，以及如何自行驗證。",
   alternates: { canonical: "/about/" },
   openGraph: {
     type: "website",
     locale: "zh_TW",
-    siteName: "SecTools.tw Toolkit",
-    title: "關於 SecTools.tw 與隱私承諾",
+    siteName,
+    title: `關於 ${siteName}與隱私承諾`,
     description: "開放原始碼、完全在瀏覽器本機運算的繁體中文資安工具箱：不上傳、不追蹤、可自行部署。",
     url: "/about/",
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "SecTools.tw 免費線上資安工具箱" }],
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: siteName }],
   },
 };
 
@@ -36,9 +37,9 @@ export default function AboutPage() {
               <Link href="/">工具庫</Link><span aria-hidden="true">/</span><strong aria-current="page">關於與隱私</strong>
             </nav>
             <span className="section-kicker">ABOUT · PRIVACY</span>
-            <h1>關於 SecTools.tw</h1>
+            <h1>關於 SecTools 資安工具箱</h1>
             <p className="category-hero__lead">
-              SecTools.tw Toolkit 是給資安工程師、SOC 分析師、開發者與 CTF 選手的免費工作台。我們相信處理 Token、日誌與惡意樣本時，
+              SecTools 資安工具箱是給資安工程師、SOC 分析師、開發者與 CTF 選手的免費工作台。我們相信處理 Token、日誌與惡意樣本時，
               最安全的做法是讓資料根本不離開你的電腦——所以 {toolCatalog.length} 個工具全部在瀏覽器本機執行。
             </p>
           </div>

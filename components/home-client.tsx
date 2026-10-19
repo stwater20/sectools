@@ -113,8 +113,9 @@ export function HomeClient({ tools, categories }: { tools: ToolSummary[]; catego
             <span>{tools.length} 個工具・100% 本機運算</span>
             <b aria-hidden="true">→</b>
           </a>
-          <h1>資安日常工具，<br /><span className="gradient-text">資料不出瀏覽器。</span></h1>
-          <p className="hero__lead">JWT 解碼、Hash 計算、CIDR 換算、CVSS 評分、IOC 擷取⋯⋯{tools.length} 個資安工程師、SOC 分析師與 CTF 玩家天天用到的工具，打開就能用。不用註冊、沒有廣告，貼上的內容只在你的電腦上運算。</p>
+          <h1>免費線上<br /><span className="gradient-text">資安工具箱</span></h1>
+          <p className="hero__subtitle">{tools.length} 個工具，資料只在你的瀏覽器裡運算。</p>
+          <p className="hero__lead">JWT 解碼、Hash 計算、CIDR 換算、CVSS 評分、IOC 擷取⋯⋯資安工程師、SOC 分析師與 CTF 玩家天天用到的工具，不用註冊、沒有廣告，打開就能用。</p>
           <div className="hero-search" role="search">
             <svg className="hero-search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></svg>
             <label className="sr-only" htmlFor="tool-search">搜尋資安工具</label>

@@ -12,7 +12,7 @@ export default function Home() {
       "@type": "WebSite",
       "@id": `${siteUrl}/#website`,
       name: siteName,
-      alternateName: ["SecTools", "SecTools.tw 資安工具箱"],
+      alternateName: ["SecTools", "SecTools.tw", "資安工具箱"],
       url: `${siteUrl}/`,
       inLanguage: siteLocale,
       description: "免費線上資安工具箱，所有運算都在瀏覽器本機完成，資料不會上傳。",
@@ -35,7 +35,7 @@ export default function Home() {
     {
       "@context": "https://schema.org",
       "@type": "ItemList",
-      name: "SecTools.tw 線上資安工具",
+      name: `${siteName}：線上資安工具清單`,
       numberOfItems: toolCatalog.length,
       itemListElement: toolCatalog.map((tool, index) => ({
         "@type": "ListItem",
@@ -58,7 +58,7 @@ export default function Home() {
             <div className="section-heading section-heading--center">
               <span className="section-kicker">WHY SECTOOLS</span>
               <h2 id="features-title">敏感資料，留在你的電腦裡。</h2>
-              <p>多數線上工具會把你貼上的內容送到伺服器處理。SecTools.tw 不這麼做：所有運算都由瀏覽器內建的 JavaScript 與 Web Crypto API 完成。</p>
+              <p>多數線上工具會把你貼上的內容送到伺服器處理。SecTools 不這麼做：所有運算都由瀏覽器內建的 JavaScript 與 Web Crypto API 完成。</p>
             </div>
             <div className="bento">
               <article className="bento__card bento__card--hero">

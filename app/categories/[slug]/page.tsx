@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteFooter, SiteHeader } from "@/components/site-shell";
-import { absoluteUrl, jsonLd, siteUrl } from "@/lib/site";
+import { absoluteUrl, jsonLd, siteName, siteUrl } from "@/lib/site";
 import { categories, findCategory, toolCatalog } from "@/lib/tool-catalog";
 
 export const dynamicParams = false;
@@ -24,11 +24,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: {
       type: "website",
       locale: "zh_TW",
-      siteName: "SecTools.tw Toolkit",
-      title: `${title}｜SecTools.tw`,
+      siteName,
+      title: `${title}｜${siteName}`,
       description: category.summary,
       url: `/categories/${category.slug}/`,
-      images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `${category.title}｜SecTools.tw` }],
+      images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `${category.title}｜${siteName}` }],
     },
   };
 }

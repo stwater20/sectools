@@ -7,14 +7,14 @@ import "./globals.css";
 const inter = localFont({ src: "./fonts/inter-latin-var.woff2", variable: "--font-inter", weight: "100 900", display: "swap" });
 
 const toolCount = toolCatalog.length;
-const shareTitle = `SecTools.tw｜${toolCount} 個免費線上資安工具，資料不出瀏覽器`;
+const shareTitle = `${siteName}｜${toolCount} 個免費線上資安工具`;
 const shareDescription = `JWT 解碼、Hash、CIDR、CVSS、IOC、PCAP 與 CTF 工具一次收齊。免註冊、無廣告，貼上的內容只在你的電腦上運算。`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "免費線上資安工具箱：JWT 解碼、Hash、CIDR、CVSS 與 CTF 工具｜SecTools.tw",
-    template: "%s｜SecTools.tw",
+    default: `${siteName}｜免費線上 JWT、Hash、CIDR、CVSS 與 CTF 工具`,
+    template: `%s｜${siteName}`,
   },
   description: `${toolCount} 個免費線上資安工具：JWT 解碼與驗簽、Hash／HMAC、CIDR 與 IPv6 計算、CVSS 評分、IOC 擷取、PCAP 分析與 CTF 解題。免註冊、無廣告，資料全程在瀏覽器處理，不會上傳。`,
   applicationName: siteName,
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     title: shareTitle,
     description: shareDescription,
     url: "/",
-    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: "SecTools.tw 免費線上資安工具箱" }],
+    images: [{ url: "/og.jpg", width: 1200, height: 630, alt: siteName }],
   },
   twitter: {
     card: "summary_large_image",

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { SiteFooter, SiteHeader } from "@/components/site-shell";
 import { ToolActions } from "@/components/tool-actions";
 import { ToolWorkbench } from "@/components/tool-workbench";
-import { absoluteUrl, jsonLd, siteLocale, siteUrl } from "@/lib/site";
+import { absoluteUrl, jsonLd, siteLocale, siteName, siteUrl } from "@/lib/site";
 import { categoryOf, findTool, relatedTools, toolCatalog } from "@/lib/tool-catalog";
 
 export const dynamicParams = false;
@@ -27,13 +27,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: {
       type: "website",
       locale: "zh_TW",
-      siteName: "SecTools.tw Toolkit",
-      title: `${title}｜SecTools.tw`,
+      siteName,
+      title: `${title}｜${siteName}`,
       description,
       url: `/${tool.slug}/`,
-      images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `${tool.name}｜SecTools.tw 資安工具箱` }],
+      images: [{ url: "/og.jpg", width: 1200, height: 630, alt: `${tool.name}｜${siteName}` }],
     },
-    twitter: { card: "summary_large_image", title: `${tool.name}｜SecTools.tw`, description, images: ["/og.jpg"] },
+    twitter: { card: "summary_large_image", title: `${tool.name}｜${siteName}`, description, images: ["/og.jpg"] },
   };
 }
 
@@ -50,7 +50,7 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
   };
   const faqs = [
     { question: `${tool.name}會上傳我的資料嗎？`, answer: "不會。工具不會發出任何網路請求，輸入與結果只存在目前的分頁。打開開發者工具的 Network 面板，就能自己確認。" },
-    { question: `${tool.name}要付費或註冊嗎？`, answer: `都不用。${tool.name}和 SecTools.tw 上的其他工具一樣，免費、免帳號，也沒有次數限制。` },
+    { question: `${tool.name}要付費或註冊嗎？`, answer: `都不用。${tool.name}和 SecTools 資安工具箱裡的其他工具一樣，免費、免帳號，也沒有次數限制。` },
     { question: `手機或離線環境可以用${tool.name}嗎？`, answer: "可以。手機與電腦瀏覽器都能使用，頁面載入後斷網也能繼續運算。需要在內網使用，也可以從 GitHub 取得原始碼自行部署。" },
     { question: `${tool.name}的結果可以直接當作正式判定嗎？`, answer: "建議當作初步分析與交叉比對使用。重要事件請保留原始證據，並以正式的驗證或鑑識流程確認。" },
   ];
