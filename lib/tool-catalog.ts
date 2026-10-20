@@ -69,7 +69,7 @@ export const categories: CategoryDefinition[] = [
     label: "FORENSICS",
     slug: "forensics",
     title: "數位鑑識與檔案分析工具",
-    summary: "檔案簽章、PCAP 摘要、字串擷取、Hex 檢視與時間戳轉換，快速初篩證據。",
+    summary: "檔案簽章、隱藏檔案掃描、LSB 隱寫、PCAP 摘要、字串擷取與 Hex 檢視，快速初篩證據。",
     intro: "數位鑑識的第一步通常是快速初篩：這個檔案真的是它宣稱的格式嗎？封包裡有哪些主機？二進位檔藏了什麼字串？這些工具直接在瀏覽器讀取檔案，不上傳證據，適合事件應變現場使用。",
     useCase: "快速初篩檔案、時間戳與二進位證據，再交由正式鑑識流程確認。",
   },
@@ -78,8 +78,8 @@ export const categories: CategoryDefinition[] = [
     label: "CTF",
     slug: "ctf",
     title: "CTF 解題工具",
-    summary: "XOR、Caesar、進位轉換、Pack、RSA 數學與多層解碼，CTF 選手的常備工具。",
-    intro: "Crypto、Pwn、Web 與 Misc 題目常需要反覆轉換資料。這組 CTF 工具整合 XOR 破解、古典密碼枚舉、整數 pack、RSA 數論與多層編碼解碼，讓你專注在解題思路而不是寫一次性腳本。",
+    summary: "RSA 求解、Vigenère 破解、古典密碼、摩斯碼、XOR、QR Code 與多層解碼，CTF 選手的常備工具。",
+    intro: "Crypto、Pwn、Web 與 Misc 題目常需要反覆轉換資料。這組 CTF 工具參考 CyberChef、dCode 與 RsaCtfTool 的常用功能，整合 RSA 自動求解、Vigenère 與古典密碼破解、字頻分析、摩斯碼、XOR、JWT 偽造、Brainfuck 與 QR Code 解碼，讓你專注在解題思路而不是寫一次性腳本。",
     useCase: "解答密碼學、Pwn、Web 與資料編碼類 CTF 題目。",
   },
 ];
@@ -493,6 +493,45 @@ export const toolCatalog: ToolDefinition[] = [
     intro: "Directory Traversal 與 LFI payload 常透過 double encoding、反斜線或 null byte 隱藏。本工具只做詞法分析，不會讀取檔案，也不會把輸入送到任何網站。",
     steps: ["貼上 URL path、Windows 路徑或可疑參數值，選擇最多 percent decoding 層數。", "檢查每層解碼結果、正規化路徑與上層目錄片段，辨識不同解析器可能看到的內容。", "依風險提示回到應用程式驗證 canonicalization、base directory 與 allowlist 邏輯。"],
     useCases: ["分析 Web Log、WAF 告警與 CTF 中的 ../、%2e%2e 或 double-encoded payload。", "比較 Windows 反斜線與 POSIX 正斜線混用造成的路徑解析差異。", "檢查 null byte、絕對路徑與越過起始目錄等 LFI 線索。"],
+  } },
+  { slug: "vigenere-cipher", name: "Vigenère 密碼破解", englishName: "Vigenère Cipher Solver", description: "用 Key 加解密 Vigenère，或在不知道 Key 時以重合指數與字頻分析自動猜出金鑰並還原明文。", category: "CTF 工具", icon: "Vg", tags: ["vigenere", "維吉尼亞密碼", "polyalphabetic", "kasiski", "crypto", "ctf"], featured: true, status: "new", guide: {
+    intro: "Vigenère 是 CTF Crypto 入門最常見的多表替換密碼。本工具除了用已知 Key 加解密，也能在只有密文時，以重合指數（IC）推測金鑰長度，再逐欄用英文字頻與常見字詞評分，自動找出最可能的 Key。",
+    steps: ["貼上密文；保留原本的空白與標點，可提高評分準確度。", "按「自動破解 Key」，檢視排名最前面的幾組金鑰與明文。", "若結果只差幾個字母，把 Key 手動修正後按「用 Key 解密」確認。"],
+    useCases: ["解出 CTF 中只給密文的 Vigenère／維吉尼亞密碼題。", "已知 Key 時快速加密或解密英文訊息。", "教學示範 Kasiski／Friedman 分析如何破解多表替換。"],
+  } },
+  { slug: "classic-ciphers", name: "古典密碼工具組", englishName: "Classical Cipher Toolkit", description: "Atbash、ROT47、Affine、Rail Fence 柵欄密碼與 Bacon 培根密碼一次搞定，Affine 與柵欄支援暴力枚舉。", category: "CTF 工具", icon: "Ab", tags: ["atbash", "rot47", "affine", "rail fence", "柵欄密碼", "bacon", "培根密碼", "ctf"], featured: true, status: "new", guide: {
+    intro: "CTF 古典密碼題常見 Atbash、ROT47、Affine 仿射密碼、Rail Fence 柵欄密碼與 Bacon 培根密碼。本工具整合這五種加解密，Affine 與 Rail Fence 也能暴力枚舉所有參數並依英文程度排序。",
+    steps: ["在上方選擇密碼類型，或按「載入範例」看看密文長什麼樣子。", "已知參數就直接解密；不知道參數時按「暴力枚舉」。", "從排名第一的候選開始檢查，確認可讀後複製結果。"],
+    useCases: ["辨識並解開 Atbash 鏡像字母或 ROT47 混淆字串。", "枚舉 Affine 的 312 組金鑰與柵欄密碼的層數。", "把 AABAB 形式的培根密碼轉回英文字母。"],
+  } },
+  { slug: "morse-code", name: "摩斯密碼轉換器", englishName: "Morse Code Translator", description: "摩斯密碼與英文、數字、標點雙向轉換，支援 /、| 或換行分隔單字，也接受 · 與 — 等符號。", category: "CTF 工具", icon: "·−", tags: ["morse", "摩斯密碼", "摩斯電碼", "encoding", "ctf"], featured: true, status: "new" },
+  { slug: "base-family-codec", name: "Base32／58／85／91 編解碼", englishName: "Base32 / Base58 / Base85 / Base91 Codec", description: "支援 Base32、Base58（Bitcoin）、Base62、Ascii85 與 Base91 編解碼，並能自動辨識是哪一種 Base。", category: "編碼與雜湊", icon: "B58", tags: ["base32", "base58", "base62", "base85", "ascii85", "base91", "ctf", "encoding"], featured: true, status: "new", guide: {
+    intro: "CTF 常把 flag 用 Base32、Base58、Ascii85 或 Base91 包裝，外觀和 Base64 很像卻無法用一般工具解碼。本工具支援五種常見 Base 編碼，也能一次嘗試全部格式，列出可讀的結果。",
+    steps: ["貼上可疑字串，先按「自動辨識」看看哪種 Base 能解出可讀文字。", "確認格式後選擇對應的 Base 並按「解碼」，同時查看原始 bytes。", "若解出的仍是編碼字串，可交給多層編碼解碼器繼續處理。"],
+    useCases: ["解開 CTF Misc／Crypto 題中的 Base58、Base91 字串。", "辨識只含大寫字母與 2–7 的 Base32（常見於 TOTP Secret）。", "處理 PDF 與 PostScript 中的 Ascii85 資料。"],
+  } },
+  { slug: "frequency-analysis", name: "字母頻率分析", englishName: "Letter Frequency Analysis", description: "即時計算密文字母頻率、重合指數與常見雙字母，對照英文平均分佈，判斷密碼類型與 Caesar 位移。", category: "CTF 工具", icon: "f%", tags: ["frequency analysis", "字頻分析", "index of coincidence", "cryptanalysis", "ctf"], status: "new" },
+  { slug: "rsa-solver", name: "RSA 自動求解器", englishName: "RSA CTF Solver", description: "輸入 n、e、c 自動嘗試小 e 開根號、試除法、Fermat、Wiener 與 Pollard rho，分解後直接解出明文。", category: "CTF 工具", icon: "n,e", tags: ["rsa", "rsa ctf", "factor", "wiener attack", "fermat", "long_to_bytes", "crypto"], featured: true, status: "new", guide: {
+    intro: "RSA 是 CTF Crypto 的必考題型。本工具會依序嘗試已知 p／q／d、小 e 直接開根號、試除法、Fermat 分解（p、q 接近）、Wiener 攻擊（d 過小）與 Pollard's rho，成功後計算 d 並以 long_to_bytes 顯示明文。",
+    steps: ["填入 n、e、c；支援十進位或 0x 開頭的十六進位。", "若已知 p、q 或 d 可一併填入，按「自動求解」。", "檢查求解步驟與明文；若無法分解，可到 factordb 查詢後把 p、q 填回。"],
+    useCases: ["解出模數過小或 p、q 太接近的 RSA 題目。", "處理 e = 3 且明文未被模數截斷的小指數題。", "已知因數時快速計算 φ(n)、d 與明文。"],
+  } },
+  { slug: "brainfuck-interpreter", name: "Brainfuck／Ook! 直譯器", englishName: "Brainfuck & Ook! Interpreter", description: "在瀏覽器執行 Brainfuck 或 Ook! 程式並顯示輸出，有 500 萬步上限，避免無窮迴圈卡住頁面。", category: "CTF 工具", icon: "+[]", tags: ["brainfuck", "ook", "esolang", "esoteric", "ctf"], status: "new" },
+  { slug: "jwt-forger", name: "JWT 偽造工具", englishName: "JWT Forger (alg none / HS256)", description: "修改 JWT payload 後重新以 alg=none 或 HS256/384/512 簽章，用於 CTF 與授權測試中驗證伺服器驗章邏輯。", category: "CTF 工具", icon: "J*", tags: ["jwt", "alg none", "jwt attack", "hs256", "web ctf", "token forgery"], featured: true, status: "new", guide: {
+    intro: "Web CTF 常見 JWT 漏洞：伺服器接受 alg=none，或使用可被破解的弱 HMAC 金鑰。本工具可載入既有 Token、修改 payload（例如把 role 改成 admin），再以 none 或指定金鑰重新簽章。請只用於 CTF 與授權測試。",
+    steps: ["貼上取得的 JWT 並按「載入 Header／Payload」。", "修改 payload 欄位，選擇 none 或 HS256 並填入 Secret。", "產生新的 JWT，帶回題目或測試環境驗證伺服器行為。"],
+    useCases: ["測試伺服器是否錯誤接受 alg=none 的未簽章 Token。", "以破解出的弱金鑰重新簽發提升權限的 Token。", "在滲透測試報告中重現 JWT 驗章缺陷。"],
+  } },
+  { slug: "lsb-steganography", name: "LSB 隱寫分析", englishName: "LSB Steganography & Bit Plane Viewer", description: "類似 Stegsolve，檢視圖片 R/G/B/A 各位元平面，並依 LSB 擷取藏在像素裡的文字或檔案。", category: "鑑識與分析", icon: "▦", tags: ["steganography", "隱寫術", "lsb", "stegsolve", "bit plane", "image", "ctf"], featured: true, status: "new", guide: {
+    intro: "圖片隱寫是 CTF Misc／Forensics 常客，最常見手法是把資料藏在像素的最低位元（LSB）。本工具像 Stegsolve 一樣逐一顯示各色彩通道的位元平面，並能依通道組合與位元順序擷取隱藏資料，全程不上傳圖片。",
+    steps: ["拖放 PNG／BMP 圖片，或直接按 Ctrl + V 貼上截圖。", "切換 R/G/B/A 與位元 0–7，觀察位元平面是否出現文字或圖案。", "在右側選擇通道組合與位元順序擷取資料，可複製文字或下載 bytes。"],
+    useCases: ["找出藏在 PNG 最低位元的 flag 字串。", "檢視位元平面中隱藏的 QR Code 或文字圖案。", "擷取 LSB 中嵌入的檔案，再交給隱藏資料掃描器分析。"],
+  } },
+  { slug: "qr-code-decoder", name: "QR Code 解碼器", englishName: "QR Code Decoder", description: "從圖片或截圖解讀 QR Code 內容，支援反色 QR，圖片只在瀏覽器處理，可直接 Ctrl + V 貼上。", category: "CTF 工具", icon: "QR", tags: ["qr code", "qr 解碼", "qrcode reader", "barcode", "ctf", "misc"], featured: true, status: "new" },
+  { slug: "hidden-data-scanner", name: "檔案隱藏資料掃描器", englishName: "Embedded File Scanner (binwalk-lite)", description: "像 binwalk 一樣掃描檔案內嵌的 ZIP、PNG、PDF 等簽章，檢查 PNG 文字區塊、JPEG 註解與結尾後的多餘資料。", category: "鑑識與分析", icon: "⌖", tags: ["binwalk", "steganography", "隱寫", "embedded file", "隱藏檔案", "forensics", "ctf"], featured: true, status: "new", guide: {
+    intro: "CTF Forensics 題常把壓縮檔接在圖片後面，或把 flag 藏在 PNG 文字區塊與 JPEG 註解裡。本工具像 binwalk 一樣掃描每個位置的 Magic Bytes，列出內嵌檔案的位移並可直接擷取下載，同時提示結尾之後的多餘資料。",
+    steps: ["選擇或拖放要分析的檔案（上限 10 MB），檔案不會上傳。", "查看找到的檔案簽章與位移，以及 PNG／JPEG 結構線索。", "按「擷取下載」取出內嵌檔案，再用對應工具繼續分析。"],
+    useCases: ["找出接在 JPEG 或 PNG 結尾後的 ZIP／RAR 壓縮檔。", "讀取 PNG tEXt 區塊與 JPEG COM 註解中的提示。", "快速搜尋檔案中 flag{...} 形式的字串。"],
   } },
 ];
 

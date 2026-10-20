@@ -2,6 +2,7 @@
 // Run `npm run build` first, then `npm run test:e2e`.
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -86,6 +87,55 @@ const specs = {
   "rsa-math-helper": async (p) => { await inp(p, 0).fill("12"); await inp(p, 1).fill("18"); await click(p, "GCD(A, B)"); await has(p, "6"); await inp(p, 0).fill("3"); await inp(p, 1).fill("11"); await click(p, "A⁻¹ mod B"); await has(p, "4"); await inp(p, 0).fill("4"); await inp(p, 1).fill("13"); await inp(p, 2).fill("497"); await click(p, "Aᴮ mod M"); await has(p, "445"); },
   "unicode-escape-codec": async (p) => { await ta(p).fill("\\u0066\\u006c\\u0061\\u0067"); await click(p, "解碼"); await has(p, "flag"); },
   "layered-decoder": async (p) => { await ta(p).fill("%5A%6D%78%68%5A%77%3D%3D"); await click(p, "自動逐層解碼"); await has(p, "flag"); },
+  "vigenere-cipher": async (p) => { await click(p, "載入範例"); await click(p, "自動破解 Key"); await has(p, "SECTOOLS"); await has(p, "flag{vigenere_cracked}"); },
+  "classic-ciphers": async (p) => {
+    await click(p, "載入範例"); await click(p, "轉換（加解密相同）"); await has(p, "flag{atbash_mirror}");
+    await click(p, "ROT47"); await click(p, "載入範例"); await click(p, "轉換（加解密相同）"); await has(p, "flag{rot47_shifts_symbols}");
+    await click(p, "Affine"); await click(p, "載入範例"); await click(p, "暴力枚舉"); await has(p, "flag{affine_cipher} the key was easy to find");
+    await click(p, "Rail Fence"); await click(p, "載入範例"); await click(p, "暴力枚舉"); await has(p, "WEAREDISCOVEREDFLEEATONCE");
+    await click(p, "Bacon"); await click(p, "載入範例"); await click(p, "解密"); await has(p, "FLAG");
+  },
+  "morse-code": async (p) => { await click(p, "載入範例"); await click(p, "解碼摩斯碼"); await has(p, "FLAG MORSE IS FUN"); await ta(p).fill("SOS"); await click(p, "文字轉摩斯碼"); await has(p, "... --- ..."); },
+  "base-family-codec": async (p) => { await click(p, "載入範例"); await click(p, "解碼"); await has(p, "flag{base58_rocks}"); await ta(p).fill("JBSWY3DPEBLW64TMMQ======"); await click(p, "自動辨識"); await has(p, "Hello World"); },
+  "frequency-analysis": async (p) => { await click(p, "載入範例"); await has(p, "ROT 13"); await has(p, "重合指數"); },
+  "rsa-solver": async (p) => { await click(p, "載入範例"); await click(p, "自動求解"); await has(p, "Fermat"); await has(p, "flag!"); },
+  "brainfuck-interpreter": async (p) => { await click(p, "載入範例"); await click(p, "執行"); await has(p, "Hello World!"); await ta(p).fill("Ook. Ook? Ook. Ook. Ook! Ook."); await click(p, "執行"); await has(p, "已將 Ook! 轉為 Brainfuck"); },
+  "jwt-forger": async (p) => {
+    await click(p, "載入範例"); await click(p, "產生 JWT");
+    const token = await p.locator(".workbench .result-block code").innerText();
+    const [header, payload, signature] = token.split(".");
+    const decode = (part) => JSON.parse(Buffer.from(part, "base64url").toString());
+    if (decode(header).alg !== "none" || decode(payload).role !== "admin" || signature !== "") throw new Error(`unexpected token ${token}`);
+    await p.locator(".workbench select").selectOption("HS256"); await inp(p, 0).fill("secret"); await click(p, "產生 JWT");
+    await has(p, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
+    await click(p, "載入 Header／Payload"); await has(p, "\"role\": \"user\"");
+  },
+  "lsb-steganography": async (p) => {
+    const png = await p.evaluate(() => {
+      const canvas = document.createElement("canvas"); canvas.width = 32; canvas.height = 32;
+      const context = canvas.getContext("2d"); const image = context.createImageData(32, 32);
+      const message = new TextEncoder().encode("flag{lsb_found}"); let bit = 0;
+      for (let index = 0; index < image.data.length; index += 4) {
+        for (let channel = 0; channel < 3; channel += 1) {
+          const byte = message[Math.floor(bit / 8)] ?? 0;
+          image.data[index + channel] = 0x80 | ((byte >> (7 - (bit % 8))) & 1); bit += 1;
+        }
+        image.data[index + 3] = 255;
+      }
+      context.putImageData(image, 0, 0);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await p.locator(".workbench input[type=file]").setInputFiles({ name: "stego.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+    await has(p, "flag{lsb_found}");
+  },
+  "qr-code-decoder": async (p) => {
+    await p.locator(".workbench input[type=file]").setInputFiles({ name: "qr.png", mimeType: "image/png", buffer: await readFile(new URL("./fixtures/qr-flag.png", import.meta.url)) });
+    await has(p, "flag{qr_decoded_locally}");
+  },
+  "hidden-data-scanner": async (p) => {
+    const bytes = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82, 0x50, 0x4b, 0x03, 0x04, ...Buffer.from("flag{hidden_zip}")];
+    await file(p, "image.png", bytes); await has(p, "ZIP archive"); await has(p, "IEND 之後有額外資料"); await has(p, "flag{hidden_zip}");
+  },
   "path-traversal-analyzer": async (p) => { await click(p, "分析 Path Traversal"); await has(p, "高風險"); await has(p, "etc/passwd"); },
 };
 
@@ -118,7 +168,7 @@ await check("home deep link ?q=", async () => {
 });
 await check("category filter syncs to URL", async () => {
   await page.goto(`${B}/?category=ctf`, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => document.querySelectorAll(".tool-grid .tool-card").length === 8);
+  await page.waitForFunction((count) => document.querySelectorAll(".tool-grid .tool-card").length === count, toolCatalog.filter((tool) => tool.category === "CTF 工具").length);
   await page.fill("#tool-search", "xor");
   await page.waitForURL(/q=xor.*category=ctf|category=ctf.*q=xor/);
 });

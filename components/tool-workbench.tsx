@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CopyButton, ErrorNotice, FileDropField, TextArea } from "@/components/tool-ui";
+import { BaseFamilyTool, BrainfuckTool, ClassicCipherTool, FrequencyTool, HiddenDataTool, JwtForgerTool, LsbStegoTool, MorseTool, QrDecoderTool, RsaSolverTool, VigenereTool } from "@/components/ctf-tools";
 import {
   analyzeEmailHeaders,
   analyzeCspPolicy,
@@ -57,34 +59,6 @@ import {
   type OtpAlgorithm,
   type TimestampFormat,
 } from "@/lib/tool-utils";
-
-function CopyButton({ value, label = "複製結果" }: { value: string; label?: string }) {
-  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
-  async function copy() {
-    if (!value) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      setStatus("copied");
-    } catch {
-      setStatus("failed");
-    }
-    window.setTimeout(() => setStatus("idle"), 1800);
-  }
-  return <button className="secondary-button" type="button" onClick={copy} disabled={!value} aria-live="polite">{status === "copied" ? "已複製 ✓" : status === "failed" ? "無法複製，請手動選取" : label}</button>;
-}
-
-function ErrorNotice({ message }: { message: string }) {
-  return message ? <p className="error-notice" role="alert">{message}</p> : null;
-}
-
-function TextArea({ label, value, onChange, placeholder, rows = 8 }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; rows?: number }) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <textarea rows={rows} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} spellCheck={false} />
-    </label>
-  );
-}
 
 function HttpParameterList({ title, values }: { title: string; values: Array<{ name: string; value: string }> }) {
   if (!values.length) return null;
@@ -281,9 +255,6 @@ function EmailHeaderTool() {
   return <div className="single-workbench"><TextArea label="原始 Email Header" value={input} onChange={setInput} placeholder="貼上郵件的原始標頭（不需要郵件內文）…" rows={14} /><button className="primary-button" type="button" onClick={run}>分析郵件標頭</button><ErrorNotice message={error} />{result && <div className="email-report"><div className="auth-row">{Object.entries(result.authentication).map(([name,status]) => <div key={name} className={`auth-chip auth-chip--${status}`}><span>{name.toUpperCase()}</span><strong>{status}</strong></div>)}</div>{result.warnings.length > 0 && <div className="warning-list"><strong>需要注意</strong><ul>{result.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}<div className="email-summary">{Object.entries(result.summary).map(([key,value]) => <div key={key}><span>{labels[key as keyof typeof labels]}</span><code>{value || "—"}</code></div>)}</div><details className="received-chain"><summary>傳遞節點 Received（{result.received.length}）</summary><ol>{result.received.map((hop,index) => <li key={`${hop}-${index}`}><code>{hop}</code></li>)}</ol></details></div>}</div>;
 }
 
-function FileDropField({ onFile, accept }: { onFile: (file: File) => void; accept?: string }) {
-  return <label className="file-drop"><input type="file" accept={accept} onChange={(event) => { const file = event.target.files?.[0]; if (file) onFile(file); }} /><span className="file-drop__icon">＋</span><strong>選擇本機檔案</strong><small>只在瀏覽器讀取，不會上傳 · 上限 10 MB</small></label>;
-}
 
 function FileSignatureTool() {
   const [result, setResult] = useState<(ReturnType<typeof identifyFileSignature> & { name: string; size: number; browserType: string }) | null>(null);
@@ -592,6 +563,17 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "csp-policy-analyzer": return <CspPolicyAnalyzerTool />;
     case "jwt-signature-verifier": return <JwtSignatureVerifierTool />;
     case "pcap-summary-analyzer": return <PcapSummaryAnalyzerTool />;
+    case "vigenere-cipher": return <VigenereTool />;
+    case "classic-ciphers": return <ClassicCipherTool />;
+    case "morse-code": return <MorseTool />;
+    case "base-family-codec": return <BaseFamilyTool />;
+    case "frequency-analysis": return <FrequencyTool />;
+    case "rsa-solver": return <RsaSolverTool />;
+    case "brainfuck-interpreter": return <BrainfuckTool />;
+    case "jwt-forger": return <JwtForgerTool />;
+    case "lsb-steganography": return <LsbStegoTool />;
+    case "qr-code-decoder": return <QrDecoderTool />;
+    case "hidden-data-scanner": return <HiddenDataTool />;
     default: return null;
   }
 }

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { markRecent, toggleFavorite, useFavorites, useRecent } from "@/lib/local-prefs";
 import { searchTools, type ToolSummary } from "@/lib/search";
 
-const quickSearches = ["JWT", "SHA-256", "CIDR", "CVSS", "Base64", "IOC", "XOR"];
+const quickSearches = ["JWT", "Base64", "RSA", "隱寫", "CIDR", "CVSS", "QR"];
 const popularSlugs = ["jwt-decoder", "hash-generator", "cidr-calculator", "cvss-calculator", "base64-codec", "ioc-extractor"];
 const allLabel = "全部";
 const favoritesLabel = "收藏";

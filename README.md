@@ -11,7 +11,8 @@
 - 網站與郵件：Security Headers Analyzer、CSP Policy Analyzer、Email Header Analyzer
 - 鑑識與分析：File Signature Checker、PCAP Summary Analyzer、String Extractor、Forensic Timestamp Decoder
 - 進階分析：Secret Scanner、Hash Identifier、Hex Viewer、Suspicious URL Analyzer、chmod Calculator
-- CTF：XOR Tool、Caesar Brute Force、Base/ASCII Converter、Integer Pack/Unpack、RSA Math Helper、Unicode/Escape Codec、多層編碼解碼器、Path Traversal Analyzer
+- CTF：RSA 自動求解器、Vigenère 密碼破解、古典密碼工具組（Atbash／ROT47／Affine／Rail Fence／Bacon）、字母頻率分析、摩斯密碼、JWT 偽造、Brainfuck／Ook!、QR Code 解碼、XOR Tool、Caesar Brute Force、Base/ASCII Converter、Integer Pack/Unpack、RSA Math Helper、Unicode/Escape Codec、多層編碼解碼器、Path Traversal Analyzer
+- 隱寫與鑑識：LSB 隱寫分析（位元平面檢視）、檔案隱藏資料掃描器（binwalk-lite）、Base32／58／85／91 編解碼
 
 每個工具都有獨立靜態網址、SEO metadata、結構化資料與安全使用提醒。
 
