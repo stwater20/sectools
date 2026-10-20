@@ -4,8 +4,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { searchTools, type ToolSummary } from "@/lib/search";
 import { useFavorites, useRecent } from "@/lib/local-prefs";
+import { localePath, type Locale } from "@/lib/i18n";
 
-export function CommandPalette({ tools }: { tools: ToolSummary[] }) {
+export type PaletteStrings = { label: string; short: string; placeholder: string; recent: string; empty: string; results: string; select: string; open: string; close: string; favorited: string };
+
+export function CommandPalette({ tools, locale, strings }: { tools: ToolSummary[]; locale: Locale; strings: PaletteStrings }) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +65,7 @@ export function CommandPalette({ tools }: { tools: ToolSummary[] }) {
   function go(tool: ToolSummary | undefined) {
     if (!tool) return;
     dialogRef.current?.close();
-    router.push(`/${tool.slug}/`);
+    router.push(localePath(locale, `/${tool.slug}/`));
   }
 
   function onInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -80,15 +83,15 @@ export function CommandPalette({ tools }: { tools: ToolSummary[] }) {
 
   return (
     <>
-      <button className="search-trigger" type="button" onClick={open} aria-label="搜尋工具（Ctrl+K）">
+      <button className="search-trigger" type="button" onClick={open} aria-label={strings.label}>
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></svg>
-        <span>搜尋工具</span>
+        <span>{strings.short}</span>
         <kbd>Ctrl K</kbd>
       </button>
       <dialog
         ref={dialogRef}
         className="palette"
-        aria-label="搜尋工具"
+        aria-label={strings.short}
         onClick={(event) => { if (event.target === dialogRef.current) dialogRef.current?.close(); }}
       >
         <div className="palette__panel">
@@ -102,7 +105,7 @@ export function CommandPalette({ tools }: { tools: ToolSummary[] }) {
               aria-controls={listId}
               aria-activedescendant={results[active] ? `${listId}-${active}` : undefined}
               aria-autocomplete="list"
-              placeholder="輸入工具名稱、英文或用途，例如 jwt、雜湊、cidr…"
+              placeholder={strings.placeholder}
               autoComplete="off"
               spellCheck={false}
               value={query}
@@ -111,8 +114,8 @@ export function CommandPalette({ tools }: { tools: ToolSummary[] }) {
             />
             <button type="button" className="palette__close" onClick={() => dialogRef.current?.close()}>Esc</button>
           </div>
-          {!query.trim() && (recent.length > 0 || favorites.length > 0) && <p className="palette__hint">最近使用與收藏</p>}
-          <ul ref={listRef} id={listId} role="listbox" className="palette__list" aria-label="搜尋結果">
+          {!query.trim() && (recent.length > 0 || favorites.length > 0) && <p className="palette__hint">{strings.recent}</p>}
+          <ul ref={listRef} id={listId} role="listbox" className="palette__list" aria-label={strings.results}>
             {results.map((tool, index) => (
               <li
                 key={tool.slug}
@@ -127,17 +130,17 @@ export function CommandPalette({ tools }: { tools: ToolSummary[] }) {
                 <span className="palette__icon" aria-hidden="true">{tool.icon}</span>
                 <span className="palette__text">
                   <strong>{tool.name}</strong>
-                  <small>{tool.englishName} · {tool.category}</small>
+                  <small>{locale === "en" ? tool.category : `${tool.englishName} · ${tool.category}`}</small>
                 </span>
-                {favorites.includes(tool.slug) && <span className="palette__star" aria-label="已收藏">★</span>}
+                {favorites.includes(tool.slug) && <span className="palette__star" aria-label={strings.favorited}>★</span>}
               </li>
             ))}
           </ul>
-          {results.length === 0 && <p className="palette__empty">找不到「{query}」。試試英文名稱，例如 base64、ioc、pcap。</p>}
+          {results.length === 0 && <p className="palette__empty">{strings.empty.replace("{0}", query)}</p>}
           <div className="palette__footer" aria-hidden="true">
-            <span><kbd>↑</kbd><kbd>↓</kbd> 選擇</span>
-            <span><kbd>Enter</kbd> 開啟</span>
-            <span><kbd>Esc</kbd> 關閉</span>
+            <span><kbd>↑</kbd><kbd>↓</kbd> {strings.select}</span>
+            <span><kbd>Enter</kbd> {strings.open}</span>
+            <span><kbd>Esc</kbd> {strings.close}</span>
           </div>
         </div>
       </dialog>

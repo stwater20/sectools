@@ -1,9 +1,12 @@
-import type { ToolDefinition } from "./tool-catalog";
+import type { LocalizedTool } from "./content";
 
-export type ToolSummary = Pick<ToolDefinition, "slug" | "name" | "englishName" | "description" | "category" | "icon" | "tags" | "status">;
+export type ToolSummary = { slug: string; name: string; englishName: string; description: string; category: string; icon: string; tags: string[]; status?: "new" | "popular" };
 
-export function toSummary({ slug, name, englishName, description, category, icon, tags, status }: ToolDefinition): ToolSummary {
-  return status ? { slug, name, englishName, description, category, icon, tags, status } : { slug, name, englishName, description, category, icon, tags };
+/** Compact, serializable tool data for client components. `englishName` holds the other language's name. */
+export function toSummary(tool: LocalizedTool): ToolSummary {
+  const summary: ToolSummary = { slug: tool.slug, name: tool.name, englishName: tool.altName, description: tool.description, category: tool.category.name, icon: tool.icon, tags: tool.tags };
+  if (tool.status) summary.status = tool.status;
+  return summary;
 }
 
 function normalizeSearch(value: string) {

@@ -8,6 +8,7 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { toolCatalog } from "../../lib/tool-catalog.ts";
+import { translate } from "../../lib/translate.ts";
 
 const outDir = fileURLToPath(new URL("../../out/", import.meta.url));
 if (!existsSync(join(outDir, "index.html"))) throw new Error("out/ is missing; run `npm run build` first.");
@@ -34,9 +35,16 @@ const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
 await ctx.grantPermissions(["clipboard-read", "clipboard-write"]);
 const ta = (p, n = 0) => p.locator(".workbench textarea").nth(n);
 const inp = (p, n = 0) => p.locator(".workbench input:not([type=checkbox]):not([type=range]):not([type=file])").nth(n);
-const click = (p, name) => p.locator(".workbench").getByRole("button", { name, exact: true }).first().click();
+// Specs are written with the Chinese UI text. On English pages, labels and expected text go through the
+// same dictionary the site uses; a few composite labels (built from several t() calls) are mapped here.
+const cjk = /[\u3400-\u9fff]/;
+const composite = { "計算雜湊": "Calculate hash", "計算 SRI": "Calculate SRI", "產生 HOTP": "Generate HOTP", "產生 TOTP": "Generate TOTP", "高風險": "High risk", "1 個字串": "1 strings", "個注意事項": "findings", "注意事項": "findings", "找到": "Found", "不一致": "don't match", "重合指數": "Index of coincidence" };
+const localeOf = (p) => (new URL(p.url()).pathname.startsWith("/en/") ? "en" : "zh");
+const label = (p, text) => (localeOf(p) === "en" && cjk.test(text) ? composite[text] ?? translate("en", text) : text);
+const click = (p, name) => p.locator(".workbench").getByRole("button", { name: label(p, name), exact: true }).first().click();
 const file = (p, name, bytes) => p.locator(".workbench input[type=file]").setInputFiles({ name, mimeType: "application/octet-stream", buffer: Buffer.from(bytes) });
 async function has(p, text) {
+  text = label(p, text);
   const deadline = Date.now() + 3000;
   while (Date.now() < deadline) {
     const body = await p.locator(".workbench").innerText();
@@ -140,15 +148,15 @@ const specs = {
 };
 
 
-for (const tool of toolCatalog) {
-  await check(`tool ${tool.slug}`, async () => {
+for (const [locale, prefix] of [["zh", ""], ["en", "/en"]]) for (const tool of toolCatalog) {
+  await check(`tool ${tool.slug}${locale === "en" ? " (en)" : ""}`, async () => {
     if (!specs[tool.slug]) throw new Error("no e2e spec for this tool");
     const page = await ctx.newPage();
     const errors = [];
     const requests = [];
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-    await page.goto(`${B}/${tool.slug}/`, { waitUntil: "networkidle" });
+    await page.goto(`${B}${prefix}/${tool.slug}/`, { waitUntil: "networkidle" });
     // The site is static, so only a request to another origin or a non-GET method could carry tool input.
     // Same-origin GETs are Next.js chunks and link prefetches of fixed page URLs.
     page.on("request", (r) => { if (!r.url().startsWith(`${B}/`) || r.method() !== "GET") requests.push(`${r.method()} ${r.url()}`); });
@@ -156,6 +164,11 @@ for (const tool of toolCatalog) {
       await specs[tool.slug](page);
       assert.deepEqual(errors, [], "console errors");
       assert.deepEqual(requests, [], "cross-origin or non-GET requests while using the tool");
+      if (locale === "en") {
+        // Everything the tool rendered (labels, results, errors) must be English; textarea values are user data.
+        const leftover = (await page.locator(".workbench").innerText()).split("\n").filter((line) => cjk.test(line) && !/flag\{|你好/.test(line));
+        assert.deepEqual(leftover, [], "untranslated text in the English workbench");
+      }
     } finally { await page.close(); }
   });
 }
@@ -210,7 +223,8 @@ await check("legacy /tools/ URLs redirect", async () => {
 await ctx.close();
 
 // --- No horizontal overflow or runtime errors on any page ---
-const pages = ["/", "/about/", ...readdirSync(join(outDir, "categories")).map((slug) => `/categories/${slug}/`), ...toolCatalog.map((tool) => `/${tool.slug}/`)];
+const basePages = ["/", "/about/", ...readdirSync(join(outDir, "categories")).map((slug) => `/categories/${slug}/`), ...toolCatalog.map((tool) => `/${tool.slug}/`)];
+const pages = [...basePages, ...basePages.map((path) => `/en${path}`)];
 for (const [width, scheme] of [[320, "light"], [390, "dark"], [768, "light"], [1280, "light"]]) {
   await check(`layout ${width}px ${scheme} (${pages.length} pages)`, async () => {
     const view = await browser.newPage({ viewport: { width, height: 800 }, colorScheme: scheme });

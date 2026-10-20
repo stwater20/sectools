@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { markRecent, toggleFavorite, useFavorites } from "@/lib/local-prefs";
 
-export function ToolActions({ slug, name }: { slug: string; name: string }) {
+export function ToolActions({ slug, name, strings }: { slug: string; name: string; strings: { favorite: string; favorited: string; share: string; copied: string } }) {
   const favorites = useFavorites();
   const favorite = favorites.includes(slug);
   const [shared, setShared] = useState(false);
@@ -30,10 +30,10 @@ export function ToolActions({ slug, name }: { slug: string; name: string }) {
   return (
     <div className="tool-actions">
       <button type="button" className={`tool-action ${favorite ? "is-active" : ""}`} aria-pressed={favorite} onClick={() => toggleFavorite(slug)}>
-        <span aria-hidden="true">{favorite ? "★" : "☆"}</span>{favorite ? "已收藏" : "收藏工具"}
+        <span aria-hidden="true">{favorite ? "★" : "☆"}</span>{favorite ? strings.favorited : strings.favorite}
       </button>
       <button type="button" className="tool-action" onClick={share}>
-        <span aria-hidden="true">↗</span>{shared ? "已複製連結 ✓" : "分享連結"}
+        <span aria-hidden="true">↗</span>{shared ? strings.copied : strings.share}
       </button>
     </div>
   );

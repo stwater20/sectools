@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   assetPrefix: basePath || undefined,
   poweredByHeader: false,
   reactStrictMode: true,
+  experimental: {
+    // Required for a 404 page when each language has its own root layout.
+    globalNotFound: true,
+  },
 };
 
 export default nextConfig;

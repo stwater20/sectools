@@ -858,3 +858,12 @@ kbd { display: inline-block; min-width: 20px; border: 1px solid var(--line-dark)
   .hidden-table > div > code { grid-column: 1 / -1; }
   .segmented { display: flex; }
 }
+
+/* Language switch */
+.lang-switch { height: 38px; display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid var(--line-dark); border-radius: 999px; background: var(--glass); color: var(--ink-2); font-size: 13px; font-weight: 600; transition: border-color .2s, color .2s; white-space: nowrap; }
+.lang-switch:hover { border-color: var(--orange); color: var(--orange); }
+.tool-card h3 + p { margin-top: 8px; }
+@media (max-width: 380px) {
+  .lang-switch { padding: 0 10px; font-size: 12px; }
+  .brand-copy small { display: none; }
+}

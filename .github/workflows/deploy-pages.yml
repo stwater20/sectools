@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CUSTOM_DOMAIN: tools.sectools.tw
+      # Optional: add these as repository variables (Settings → Secrets and variables → Actions → Variables).
+      NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
+      NEXT_PUBLIC_BING_SITE_VERIFICATION: ${{ vars.BING_SITE_VERIFICATION }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -60,3 +63,13 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+      # Tell Bing, Yandex and other IndexNow search engines that pages changed, so new tools get crawled quickly.
+      - name: Notify IndexNow
+        continue-on-error: true
+        env:
+          SITE: https://tools.sectools.tw
+          INDEXNOW_KEY: 88d4171959145e6bcb5fb9223b38e47d
+        run: |
+          urls=$(curl -fsS "$SITE/sitemap.xml" | grep -o '<loc>[^<]*</loc>' | sed 's#</\?loc>##g' | python3 -c 'import json,sys;print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+          curl -fsS -X POST https://api.indexnow.org/indexnow -H 'Content-Type: application/json; charset=utf-8' \
+            -d "{\"host\":\"tools.sectools.tw\",\"key\":\"$INDEXNOW_KEY\",\"keyLocation\":\"$SITE/$INDEXNOW_KEY.txt\",\"urlList\":$urls}"

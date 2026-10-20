@@ -1,6 +1,10 @@
-# SecTools 資安工具箱
+# SecTools 資安工具箱 · Security Toolkit
 
-一個真的能用、可稽核、可部署到 GitHub Pages 的繁體中文資安工具庫。所有工具預設只在瀏覽器本機運算，不含分析腳本、廣告或後端 API。
+**🌐 [tools.sectools.tw](https://tools.sectools.tw/)（繁體中文） · [tools.sectools.tw/en](https://tools.sectools.tw/en/)（English）**
+
+51 個免費線上資安與 CTF 工具，全部在瀏覽器本機運算：JWT 解碼／驗簽／偽造、Hash、CIDR、CVSS、IOC、PCAP、RSA 自動求解、Vigenère 破解、LSB 隱寫、QR 解碼、binwalk 式隱藏檔案掃描……免註冊、無廣告、不追蹤，輸入資料不會離開你的電腦。
+
+> **English:** 51 free online security and CTF tools that run entirely in your browser — JWT decode/verify/forge, hashing, CIDR, CVSS, IOC extraction, PCAP summaries, an RSA auto-solver, a Vigenère cracker, LSB steganography, QR decoding and a binwalk-style embedded file scanner. No sign-up, no ads, no tracking; your input never leaves your machine. A privacy-first alternative to pasting secrets into online tools, inspired by CyberChef, dCode, RsaCtfTool, Stegsolve and binwalk.
 
 ## 目前工具
 
@@ -14,7 +18,7 @@
 - CTF：RSA 自動求解器、Vigenère 密碼破解、古典密碼工具組（Atbash／ROT47／Affine／Rail Fence／Bacon）、字母頻率分析、摩斯密碼、JWT 偽造、Brainfuck／Ook!、QR Code 解碼、XOR Tool、Caesar Brute Force、Base/ASCII Converter、Integer Pack/Unpack、RSA Math Helper、Unicode/Escape Codec、多層編碼解碼器、Path Traversal Analyzer
 - 隱寫與鑑識：LSB 隱寫分析（位元平面檢視）、檔案隱藏資料掃描器（binwalk-lite）、Base32／58／85／91 編解碼
 
-每個工具都有獨立靜態網址、SEO metadata、結構化資料與安全使用提醒。
+每個工具都有中英文獨立靜態網址（`/<tool>/` 與 `/en/<tool>/`）、SEO metadata、hreflang、結構化資料與安全使用提醒。
 
 ## 網站功能
 
@@ -23,6 +27,8 @@
 - **分類頁**：`/categories/<slug>/` 為每個分類提供獨立介紹與工具清單，並列入 sitemap。
 - **收藏與最近使用**：首頁卡片與工具頁皆可收藏；造訪工具頁會自動記入最近使用（僅存 slug 於 localStorage）。
 - **深色模式**：預設跟隨系統，可手動切換並記住選擇。
+- **中英雙語**：`/en/` 提供完整英文版（含每個工具的操作介面）。工具介面以 `t("中文")` 呼叫翻譯，英文字典在 `lib/i18n-en.ts`；頁面內容在 `lib/content-en.ts`。
+- **曝光**：`/llms.txt` 給 AI 搜尋與助理、部署後自動通知 IndexNow（Bing 等），並可用 repository variables 設定 Google／Bing 驗證碼。詳見 [docs/GROWTH.md](docs/GROWTH.md)。
 - **SEO**：每頁具 canonical、Open Graph／Twitter、`WebApplication`／`BreadcrumbList`／`FAQPage`／`ItemList` 結構化資料、Web App Manifest 與 sitemap。
 
 ## 本機開發
@@ -83,8 +89,9 @@ Cloudflare 端也應關閉 Zaraz 與 Web Analytics 自動注入，避免加入�
 1. 在 `lib/tool-catalog.ts` 加入工具 metadata（分類需已存在於 `categories`；新增分類時一併填寫 `slug`、`summary` 與 `intro`）。
 2. 在 `components/tool-workbench.tsx` 實作純前端操作介面。
 3. 將可測試的核心運算放進 `lib/tool-utils.ts`，補上測試。
-4. 在 `tests/e2e/site.e2e.mjs` 的 `specs` 加入該工具的瀏覽器測試（輸入樣本與預期結果）。
-5. 執行 `npm run check` 與 `npm run test:e2e`。
+4. 在 `lib/content-en.ts` 加入英文頁面內容；工具介面的中文字串用 `t()` 包起來，並在 `lib/i18n-en.ts` 補上英文（單元測試會檢查是否漏翻）。
+5. 在 `tests/e2e/site.e2e.mjs` 的 `specs` 加入該工具的瀏覽器測試（中英文頁面都會跑）。
+6. 執行 `npm run check` 與 `npm run test:e2e`。
 
 ## 授權
 
