@@ -149,11 +149,13 @@ for (const tool of toolCatalog) {
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
     await page.goto(`${B}/${tool.slug}/`, { waitUntil: "networkidle" });
-    page.on("request", (r) => { if (!r.url().startsWith(`${B}/_next/`)) requests.push(r.url()); });
+    // The site is static, so only a request to another origin or a non-GET method could carry tool input.
+    // Same-origin GETs are Next.js chunks and link prefetches of fixed page URLs.
+    page.on("request", (r) => { if (!r.url().startsWith(`${B}/`) || r.method() !== "GET") requests.push(`${r.method()} ${r.url()}`); });
     try {
       await specs[tool.slug](page);
       assert.deepEqual(errors, [], "console errors");
-      assert.deepEqual(requests, [], "network requests while using the tool");
+      assert.deepEqual(requests, [], "cross-origin or non-GET requests while using the tool");
     } finally { await page.close(); }
   });
 }
