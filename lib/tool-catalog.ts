@@ -568,6 +568,21 @@ export const toolCatalog: ToolDefinition[] = [
     steps: ["拖放 WAV、MP3、OGG 或 FLAC 音檔（上限 10 MB、10 分鐘）。", "觀察頻譜圖是否出現文字或圖案，可調整 FFT 大小與顯示頻率上限。", "若有撥號音，DTMF 解碼結果會直接顯示，可一鍵複製。"],
     useCases: ["找出 CTF 音檔頻譜圖中畫出的 flag 文字。", "把電話撥號音還原成按鍵數字。", "快速檢查音檔的主要頻率與取樣率。"],
   } },
+  { slug: "recipe-chain", name: "Recipe 串接解碼器", englishName: "Recipe Chain (CyberChef-style)", description: "像 CyberChef 一樣把 Base64、Hex、URL、XOR、AES、解壓縮等操作串成 Recipe，逐步顯示中間結果並可分享連結。", category: "CTF 工具", icon: "⛓", tags: ["cyberchef", "recipe", "decoder", "base64", "xor", "chain", "ctf", "encoding"], featured: true, status: "new", guide: {
+    intro: "CTF 題目常把資料包好幾層：Hex 裡是 Base64，Base64 裡是 zlib，最後再 XOR。Recipe 串接解碼器像 CyberChef 一樣讓你把操作依序排好，每一步即時顯示中間結果，哪一層出錯一眼就看得出來，還能把 Recipe 存成分享連結。",
+    steps: ["貼上輸入資料，從選單或常用按鈕加入第一個操作。", "依序加入更多操作並調整參數，觀察每一步的預覽與錯誤訊息。", "取得最終輸出後複製或下載，也可以複製分享連結（只含步驟，不含輸入）。"],
+    useCases: ["一步步拆解 Hex → Base64 → zlib → XOR 之類的多層編碼。", "把解題流程存成連結分享給隊友。", "在惡意程式分析中重現設定檔的解碼步驟。"],
+  } },
+  { slug: "php-unserialize", name: "PHP 反序列化檢視與編輯", englishName: "PHP Unserialize Viewer & Editor", description: "把 PHP serialize() 資料轉成可編輯的 JSON，修改後自動重算字串長度重新序列化，支援 URL 與 Base64 編碼的 Cookie。", category: "CTF 工具", icon: "php", tags: ["php", "unserialize", "serialize", "反序列化", "php object injection", "cookie", "web ctf"], featured: true, status: "new", guide: {
+    intro: "PHP 反序列化漏洞是 Web CTF 與滲透測試的熱門題型，Cookie 或參數裡常見 O:4:\"User\":… 這樣的資料。手動修改很容易算錯 s: 後面的長度。本工具把資料轉成保留順序的 JSON，修改後自動以 UTF-8 bytes 重算長度，並輸出 URL 與 Base64 編碼版本。",
+    steps: ["貼上 serialize() 字串，或 URL／Base64 編碼後的 Cookie 值，按「解析」。", "在右側 JSON 修改欄位值，例如把 isAdmin 改成 true。", "按「重新序列化」，複製原始、URL 編碼或 Base64 版本帶回測試環境。"],
+    useCases: ["修改 Cookie 中序列化的使用者物件，測試授權邏輯。", "檢視 PHP 物件包含哪些類別，評估 POP gadget 風險。", "修正手動編輯後長度錯誤、無法 unserialize 的資料。"],
+  } },
+  { slug: "pickle-analyzer", name: "Python Pickle 安全分析", englishName: "Python Pickle Analyzer", description: "不執行程式碼，靜態反組譯 Python pickle，列出載入時會匯入與呼叫的函式，標示 os.system 等危險匯入。", category: "鑑識與分析", icon: "pkl", tags: ["pickle", "pickletools", "python deserialization", "反序列化", "pytorch", "model security", "malware", "ctf"], status: "new", guide: {
+    intro: "pickle.load 可以在載入時執行任意函式，惡意的 pickle、PyTorch 模型或快取檔就能藉此執行指令。本工具像 pickletools.dis 一樣逐一解析 opcode，但完全不執行內容，並列出 GLOBAL／STACK_GLOBAL 匯入的模組與函式，標示 os、subprocess、eval 等高風險項目。",
+    steps: ["拖放 .pkl、.pt 等檔案，或貼上 Base64／Hex 資料。", "查看結論與匯入清單，高風險項目代表載入時會呼叫該函式。", "需要細節時展開反組譯清單，對照 offset 追查 REDUCE 呼叫。"],
+    useCases: ["載入來路不明的機器學習模型前先檢查是否夾帶指令。", "分析 CTF 中的 pickle 反序列化題目。", "在事件調查中確認可疑 pickle 檔案的行為。"],
+  } },
 ];
 
 export function findTool(slug: string) {

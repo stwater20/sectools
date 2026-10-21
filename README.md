@@ -4,7 +4,7 @@
 
 51 個免費線上資安與 CTF 工具，全部在瀏覽器本機運算：JWT 解碼／驗簽／偽造、Hash、CIDR、CVSS、IOC、PCAP、RSA 自動求解、Vigenère 破解、LSB 隱寫、QR 解碼、binwalk 式隱藏檔案掃描……免註冊、無廣告、不追蹤，輸入資料不會離開你的電腦。
 
-> **English:** 58 free online security and CTF tools that run entirely in your browser — JWT decode/verify/forge, hashing, CIDR, CVSS, IOC extraction, PCAP summaries, an RSA auto-solver, a Vigenère cracker, LSB steganography, QR decoding and a binwalk-style embedded file scanner. No sign-up, no ads, no tracking; your input never leaves your machine. A privacy-first alternative to pasting secrets into online tools, inspired by CyberChef, dCode, RsaCtfTool, Stegsolve and binwalk.
+> **English:** 61 free online security and CTF tools that run entirely in your browser — JWT decode/verify/forge, hashing, CIDR, CVSS, IOC extraction, PCAP summaries, an RSA auto-solver, a Vigenère cracker, LSB steganography, QR decoding and a binwalk-style embedded file scanner, a CyberChef-style recipe chain, AES/DES/RC4, ZIP and PNG repair, EXIF/GPS, audio spectrograms, and PHP/pickle deserialization analysis. No sign-up, no ads, no tracking; your input never leaves your machine. A privacy-first alternative to pasting secrets into online tools, inspired by CyberChef, dCode, RsaCtfTool, Stegsolve and binwalk.
 
 ## 目前工具
 
@@ -15,8 +15,8 @@
 - 網站與郵件：Security Headers Analyzer、CSP Policy Analyzer、Email Header Analyzer
 - 鑑識與分析：File Signature Checker、PCAP Summary Analyzer、String Extractor、Forensic Timestamp Decoder
 - 進階分析：Secret Scanner、Hash Identifier、Hex Viewer、Suspicious URL Analyzer、chmod Calculator
-- CTF：RSA 自動求解器、Vigenère 密碼破解、古典密碼工具組（Atbash／ROT47／Affine／Rail Fence／Bacon）、字母頻率分析、摩斯密碼、JWT 偽造、Brainfuck／Ook!、QR Code 解碼、XOR Tool、Caesar Brute Force、Base/ASCII Converter、Integer Pack/Unpack、Cyclic Pattern 偏移計算（pwntools cyclic）、AES／DES／3DES／RC4 加解密、RSA Math Helper、Unicode/Escape Codec、多層編碼解碼器、Path Traversal Analyzer
-- 隱寫與鑑識：LSB 隱寫分析（位元平面檢視）、檔案隱藏資料掃描器（binwalk-lite）、ZIP 分析（偽加密修復、ZipCrypto 字典攻擊）、PNG 寬高／CRC 修復、EXIF／GPS 中繼資料檢視、音訊頻譜圖與 DTMF 解碼、gzip／zlib 解壓縮、Base32／58／85／91 編解碼
+- CTF：Recipe 串接解碼器（CyberChef 式）、PHP 反序列化檢視與編輯、RSA 自動求解器、Vigenère 密碼破解、古典密碼工具組（Atbash／ROT47／Affine／Rail Fence／Bacon）、字母頻率分析、摩斯密碼、JWT 偽造、Brainfuck／Ook!、QR Code 解碼、XOR Tool、Caesar Brute Force、Base/ASCII Converter、Integer Pack/Unpack、Cyclic Pattern 偏移計算（pwntools cyclic）、AES／DES／3DES／RC4 加解密、RSA Math Helper、Unicode/Escape Codec、多層編碼解碼器、Path Traversal Analyzer
+- 隱寫與鑑識：Python Pickle 安全分析（靜態反組譯）、LSB 隱寫分析（位元平面檢視）、檔案隱藏資料掃描器（binwalk-lite）、ZIP 分析（偽加密修復、ZipCrypto 字典攻擊）、PNG 寬高／CRC 修復、EXIF／GPS 中繼資料檢視、音訊頻譜圖與 DTMF 解碼、gzip／zlib 解壓縮、Base32／58／85／91 編解碼
 
 每個工具都有中英文獨立靜態網址（`/<tool>/` 與 `/en/<tool>/`）、SEO metadata、hreflang、結構化資料與安全使用提醒。
 

@@ -135,6 +135,78 @@ export const enDictionary: Record<string, string> = {
   "瀏覽器無法產生範例圖片。": "The browser couldn't create the example image.",
   "無法解碼這個音訊檔，請改用 WAV、MP3、OGG 或 FLAC。": "Couldn't decode this audio file. Try WAV, MP3, OGG or FLAC.",
   "音訊超過 10 分鐘，請先剪成較短的片段。": "The audio is longer than 10 minutes. Trim it to a shorter clip first.",
+  // Recipe chain, PHP unserialize and pickle analyzer
+  "貼上要處理的資料…": "Paste the data to process…",
+  "加入操作": "Add operation",
+  "解析資料": "Parse",
+  "加入": "Add",
+  "常用操作": "Common operations",
+  "上移": "Move up",
+  "下移": "Move down",
+  "啟用": "Enable",
+  "停用": "Disable",
+  "移除": "Remove",
+  "第 {0} 步失敗，後續步驟沒有執行。": "Step {0} failed, so the steps after it didn't run.",
+  "最終輸出": "Final output",
+  "複製分享連結": "Copy share link",
+  "像 CyberChef 一樣把操作串成 Recipe，每一步都會即時顯示中間結果。分享連結只包含 Recipe 步驟與參數，不包含你的輸入資料。": "Chain operations into a recipe like CyberChef, with each step's result shown live. Share links contain only the recipe steps and arguments, never your input.",
+  "AES／DES 解密": "AES/DES decrypt",
+  "Base32／58／85／91 編碼": "Base32/58/85/91 encode",
+  "Base32／58／85／91 解碼": "Base32/58/85/91 decode",
+  "Base64 編碼": "Base64 encode",
+  "Base64 解碼": "Base64 decode",
+  "Hex 編碼": "Hex encode",
+  "Hex 解碼": "Hex decode",
+  "URL 編碼": "URL encode",
+  "URL 解碼": "URL decode",
+  "Binary 轉 bytes": "Binary to bytes",
+  "Charcode 轉文字": "Charcode to text",
+  "跳脫序列解碼": "Unescape",
+  "Regex 擷取": "Regex extract",
+  "解壓縮（gzip／zlib／deflate）": "Decompress (gzip/zlib/deflate)",
+  "反轉": "Reverse",
+  "轉大寫": "To uppercase",
+  "轉小寫": "To lowercase",
+  "移除空白與換行": "Remove whitespace",
+  "密碼": "Ciphers",
+  "文字": "Text",
+  "位移": "Shift",
+  "進位": "Base",
+  "十進位": "Decimal",
+  "十六進位": "Hexadecimal",
+  "八進位": "Octal",
+  "分隔符號": "Separator",
+  "空白": "Space",
+  "冒號": "Colon",
+  "Key（Hex）": "Key (hex)",
+  "IV（Hex）": "IV (hex)",
+  "JavaScript（\\x \\u）": "JavaScript (\\x \\u)",
+  "Binary 必須是 8 的倍數個 0／1。": "Binary input must be a multiple of 8 bits (0/1).",
+  "Charcode 必須是 0 到 0x10FFFF 的整數。": "Charcodes must be integers from 0 to 0x10FFFF.",
+  "XOR Key 不可為空。": "The XOR key can't be empty.",
+  "Regex 語法錯誤。": "Invalid regex syntax.",
+  "分享的 Recipe 格式無效。": "The shared recipe is invalid.",
+  "serialize() 資料": "serialize() data",
+  "已自動 {0}。": "Applied {0} automatically.",
+  "包含類別：{0}。檢查這些類別的 __wakeup、__destruct、__toString 是否有危險行為。": "Classes: {0}. Check their __wakeup, __destruct and __toString methods for dangerous behavior.",
+  "沒有物件，只有純資料。": "No objects — plain data only.",
+  "JSON（可編輯）": "JSON (editable)",
+  "解析後的結構會顯示在這裡": "The parsed structure appears here",
+  "重新序列化": "Re-serialize",
+  "物件以 \"__class__\" 表示類別名稱；protected 屬性名稱是 \\u0000*\\u0000name，private 是 \\u0000類別\\u0000name。重新序列化時會以 UTF-8 bytes 重新計算每個字串長度，避免手動修改 s:長度 出錯。請只用於授權測試與 CTF。": "Objects use \"__class__\" for the class name; protected properties are named \\u0000*\\u0000name and private ones \\u0000Class\\u0000name. Re-serializing recomputes every string length in UTF-8 bytes, so hand edits can't break the s:length fields. Use only for authorized testing and CTFs.",
+  "高風險": "High risk",
+  "需檢查": "Review",
+  "常見": "Common",
+  "Pickle 資料": "Pickle data",
+  "靜態分析": "Analyze",
+  "Protocol {0} · {1} 個 opcode · {2} 次呼叫": "Protocol {0} · {1} opcodes · {2} calls",
+  "危險：載入時會呼叫 {0}": "Dangerous: loading calls {0}",
+  "沒有發現已知危險的匯入": "No known dangerous imports found",
+  "沒有任何匯入，只有純資料": "No imports — plain data only",
+  "找不到 STOP opcode，資料可能被截斷。": "No STOP opcode found; the data may be truncated.",
+  "匯入": "Import",
+  "反組譯（類似 pickletools.dis）": "Disassembly (like pickletools.dis)",
+  "只逐一解析 opcode，不會執行任何程式碼。pickle.load 會呼叫 GLOBAL／STACK_GLOBAL 匯入的函式（REDUCE），所以不可信任的 pickle、PyTorch .pt 或模型檔載入前請先檢查這裡列出的匯入。": "Opcodes are only parsed, never executed. pickle.load calls functions imported through GLOBAL/STACK_GLOBAL (via REDUCE), so check the imports listed here before loading untrusted pickles, PyTorch .pt files or model files.",
   // Shared
   "無法處理輸入內容。": "Could not process the input.",
   "輸入": "Input",
@@ -801,7 +873,34 @@ export const enDictionary: Record<string, string> = {
 };
 
 // Library messages that embed values. Each pattern matches the trimmed Chinese text.
+// Inner messages of "位置 N：…" errors from the PHP, JSON and pickle parsers.
+const positionedMessages: Record<string, string> = {
+  "字串長度無效": "invalid string length", "字串長度超過資料結尾": "string length runs past the end of the data", "陣列鍵只能是整數或字串": "array keys must be integers or strings",
+  "資料提前結束": "unexpected end of data", "整數無效": "invalid integer", "結尾有多餘資料": "extra data at the end", "字串格式錯誤": "malformed string",
+  "物件鍵必須是字串": "object keys must be strings", "缺少冒號": "missing colon", "缺少逗號或右大括號": "missing comma or closing brace",
+  "缺少逗號或右中括號": "missing comma or closing bracket", "無法辨識的值": "unrecognized value", "結尾有多餘內容": "extra content at the end",
+  "資料在 opcode 參數中途結束。": "data ends in the middle of an opcode argument.", "找不到換行結尾。": "missing newline terminator.",
+};
+function translatePositioned(message: string) {
+  const text = message.trim();
+  if (positionedMessages[text]) return positionedMessages[text];
+  let match = text.match(/^預期「(.+)」$/);
+  if (match) return `expected "${match[1]}"`;
+  match = text.match(/^找不到「(.+)」$/);
+  if (match) return `"${match[1]}" not found`;
+  match = text.match(/^不支援的型別「(.+)」$/);
+  if (match) return `unsupported type "${match[1]}"`;
+  match = text.match(/^宣告長度 (\d+) 與實際字串不符（PHP 以 UTF-8 bytes 計算）$/);
+  if (match) return `declared length ${match[1]} doesn't match the string (PHP counts UTF-8 bytes)`;
+  match = text.match(/^未知的 opcode (0x[0-9a-f]+)，可能不是 pickle 資料。$/);
+  if (match) return `unknown opcode ${match[1]}; this may not be pickle data.`;
+  return text;
+}
+
 export const enPatterns: Array<[RegExp, (...groups: string[]) => string]> = [
+  [/^位置 (\d+)：(.+)$/, (offset, message) => `At offset ${offset}: ${translatePositioned(message)}`],
+  [/^JSON 第 (\d+) 個字元：(.+)$/, (offset, message) => `JSON character ${offset}: ${translatePositioned(message)}`],
+  [/^未知的操作：(.+)$/, (id) => `Unknown operation: ${id}`],
   [/^無效的 DTMF 按鍵：(.+)$/, (key) => `Invalid DTMF key: ${key}`],
   [/^IV／Nonce 必須是 (\d+) bytes。$/, (size) => `The IV/nonce must be ${size} bytes.`],
   [/^資料長度必須是 (\d+) bytes 的倍數；加密時可啟用 PKCS#7 padding。$/, (size) => `The data length must be a multiple of ${size} bytes; enable PKCS#7 padding when encrypting.`],

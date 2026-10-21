@@ -401,4 +401,22 @@ export const toolsEn: Record<string, ToolCopy> = {
     steps: ["Drop a WAV, MP3, OGG or FLAC file (up to 10 MB and 10 minutes).", "Look for text or shapes in the spectrogram; adjust the FFT size and the maximum frequency shown.", "If there are dial tones, the decoded DTMF keys appear right away, ready to copy."],
     useCases: ["Find flag text drawn into a CTF audio file's spectrogram.", "Turn phone dial tones back into the keys pressed.", "Quickly check an audio file's dominant frequency and sample rate."],
   },
+  "recipe-chain": {
+    description: "Chain Base64, hex, URL, XOR, AES, decompression and more into a CyberChef-style recipe, with every intermediate result shown and a shareable link.",
+    intro: "CTF data often comes in layers: Base64 inside hex, zlib inside Base64, then XOR on top. Like CyberChef, this tool lets you line operations up in order and shows each step's result live, so you can see exactly which layer fails — and save the recipe as a shareable link.",
+    steps: ["Paste your input and add the first operation from the menu or the quick buttons.", "Add more operations and tweak their arguments, watching each step's preview and errors.", "Copy or download the final output, or copy a share link (steps only, never your input)."],
+    useCases: ["Peel layered encodings like hex → Base64 → zlib → XOR one step at a time.", "Share your solving steps with teammates as a link.", "Reproduce how malware decodes its configuration."],
+  },
+  "php-unserialize": {
+    description: "Turn PHP serialize() data into editable JSON and re-serialize it with string lengths recomputed; handles URL- and Base64-encoded cookies.",
+    intro: "PHP deserialization bugs are a staple of web CTFs and penetration tests, and cookies or parameters often carry data like O:4:\"User\":…. Editing it by hand makes it easy to get the s: lengths wrong. This tool converts the data to order-preserving JSON, recomputes every length in UTF-8 bytes after you edit, and outputs URL- and Base64-encoded versions.",
+    steps: ["Paste a serialize() string, or a URL- or Base64-encoded cookie value, and click Parse.", "Edit values in the JSON on the right — for example, set isAdmin to true.", "Click Re-serialize and copy the raw, URL-encoded or Base64 version back into your test."],
+    useCases: ["Modify serialized user objects in cookies to test authorization logic.", "See which classes a PHP payload contains to assess POP gadget risk.", "Fix hand-edited data that no longer unserializes because of wrong lengths."],
+  },
+  "pickle-analyzer": {
+    description: "Statically disassemble Python pickles without running them, listing the functions loading would import and call, with dangerous imports like os.system flagged.",
+    intro: "pickle.load can call arbitrary functions while loading, so a malicious pickle, PyTorch model or cache file can run commands. Like pickletools.dis, this tool walks the opcodes one by one — without executing anything — and lists the modules and functions imported through GLOBAL/STACK_GLOBAL, flagging high-risk ones such as os, subprocess and eval.",
+    steps: ["Drop a .pkl or .pt file, or paste Base64 or hex data.", "Read the verdict and the import list; high-risk entries are functions loading would call.", "For details, read the disassembly and follow REDUCE calls by offset."],
+    useCases: ["Check untrusted machine learning models for embedded commands before loading them.", "Analyze pickle deserialization challenges in CTFs.", "Confirm what a suspicious pickle file would do during an incident investigation."],
+  },
 };

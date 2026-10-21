@@ -880,7 +880,27 @@ kbd { display: inline-block; min-width: 20px; border: 1px solid var(--line-dark)
 .exif-table > div { grid-template-columns: 70px minmax(0, 200px) minmax(0, 1fr); }
 .exif-table code { overflow-wrap: anywhere; }
 .spectrogram-canvas { height: 320px; object-fit: fill; image-rendering: auto; }
+.recipe-add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 14px; }
+.recipe-add .field { flex: 1 1 220px; margin: 0; }
+.recipe-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.recipe-quick .ghost-button { min-height: 32px; padding: 0 12px; font-size: 12px; }
+.recipe-steps { list-style: none; margin: 18px 0 22px; padding: 0; display: grid; gap: 10px; counter-reset: none; }
+.recipe-steps li { border: 1px solid var(--line); border-left: 3px solid var(--orange); border-radius: 12px; background: var(--surface-2); padding: 12px 14px; display: grid; gap: 10px; min-width: 0; }
+.recipe-steps li.is-disabled { opacity: .55; border-left-color: var(--line-dark); }
+.recipe-steps li.is-error { border-left-color: var(--red); }
+.recipe-step__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.recipe-step__index { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--orange); color: #fff; font: 700 11px var(--mono); }
+.recipe-step__head strong { font-size: 13px; flex: 1 1 auto; }
+.recipe-step__actions { display: flex; gap: 6px; }
+.recipe-step__actions .ghost-button { min-height: 30px; padding: 0 10px; font-size: 12px; }
+.recipe-step__args { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 12px; }
+.recipe-step__args .field { margin: 0; }
+.recipe-step__preview { font: 11px/1.6 var(--mono); color: var(--blue); overflow-wrap: anywhere; max-height: 4.8em; overflow: hidden; }
+.recipe-step__error { margin: 0; color: var(--red); font-size: 12px; }
+.pickle-table > div { grid-template-columns: 70px minmax(0, 1fr) auto; }
+.pickle-listing { margin: 0; max-height: 360px; overflow: auto; font: 11px/1.6 var(--mono); color: var(--ink-2); white-space: pre; }
 @media (max-width: 680px) {
+  .pickle-table > div { grid-template-columns: minmax(0, 1fr) auto; }
   .png-table > div, .exif-table > div { grid-template-columns: minmax(0, 1fr) auto; }
   .cipher-options__wide { grid-column: auto; }
   .zip-table > div { grid-template-columns: minmax(0, 1fr) auto; }

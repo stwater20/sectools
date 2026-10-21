@@ -176,6 +176,27 @@ const specs = {
     await file(p, "tones.wav", encodeWav(synthesizeDtmf("1337", 44100), 44100)); await has(p, "44,100 Hz"); await has(p, "1337");
     const width = await p.locator(".workbench canvas").evaluate((canvas) => canvas.width); if (width < 10) throw new Error(`spectrogram width ${width}`);
   },
+  "recipe-chain": async (p) => {
+    await click(p, "載入範例"); await has(p, "flag{recipe_chaining_works}");
+    const remove = () => p.locator(".recipe-steps li").first().getByRole("button", { name: label(p, "移除"), exact: true }).click();
+    await ta(p, 0).fill("synt{ebg13_va_n_erpvcr}"); await remove(); await remove(); await remove();
+    await click(p, "+ ROT13／Caesar"); await has(p, "flag{rot13_in_a_recipe}");
+    await click(p, "複製分享連結"); const link = await p.evaluate(() => navigator.clipboard.readText());
+    if (!link.includes("#recipe=")) throw new Error(`share link ${link}`);
+    await remove(); await ta(p, 0).fill("synt{funerq}"); await p.evaluate((url) => { window.location.hash = new URL(url).hash; }, link); await has(p, "flag{shared}");
+    const fresh = await p.context().newPage(); await fresh.goto(link, { waitUntil: "networkidle" });
+    await fresh.locator(".workbench textarea").first().fill("synt{bcrarq}"); await has(fresh, "flag{opened}"); await fresh.close();
+  },
+  "php-unserialize": async (p) => {
+    await click(p, "載入範例"); await has(p, "\"isAdmin\": false"); await has(p, "User");
+    const json = await ta(p, 1).inputValue(); await ta(p, 1).fill(json.replace('"isAdmin": false', '"isAdmin": true').replace('"guest"', '"Ádmín"'));
+    await click(p, "重新序列化"); await has(p, 'O:4:"User":3:{s:4:"name";s:7:"Ádmín";s:7:"isAdmin";b:1;');
+    await ta(p, 0).fill('s:5:"abc";'); await click(p, "解析資料"); await p.locator(".error-notice").waitFor();
+  },
+  "pickle-analyzer": async (p) => {
+    await click(p, "載入範例"); await has(p, "posix.system"); await has(p, "STACK_GLOBAL"); await has(p, "高風險");
+    await ta(p, 0).fill(Buffer.from([0x80, 0x04, 0x4b, 0x2a, 0x2e]).toString("base64")); await click(p, "靜態分析"); await has(p, "沒有任何匯入，只有純資料"); await has(p, "BININT1");
+  },
   "path-traversal-analyzer": async (p) => { await click(p, "分析 Path Traversal"); await has(p, "高風險"); await has(p, "etc/passwd"); },
 };
 
@@ -199,7 +220,7 @@ for (const [locale, prefix] of [["zh", ""], ["en", "/en"]]) for (const tool of t
       if (locale === "en") {
         // Everything the tool rendered (labels, results, errors) must be English; textarea values are user data.
         const leftover = (await page.locator(".workbench").innerText()).split("\n").filter((line) => cjk.test(line) && !/flag\{|你好/.test(line));
-        assert.deepEqual(leftover, [], "untranslated text in the English workbench");
+        assert.deepEqual(leftover, [], `untranslated text in the English workbench: ${leftover.join(" | ").slice(0, 300)}`);
       }
     } finally { await page.close(); }
   });

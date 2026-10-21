@@ -4,6 +4,7 @@ import { useLocale, useT } from "@/components/locale";
 import { useMemo, useState } from "react";
 import { CopyButton, ErrorNotice, FileDropField, TextArea } from "@/components/tool-ui";
 import { AudioSpectrogramTool, ExifViewerTool, PngRepairTool } from "@/components/forensics-tools";
+import { PhpSerializeTool, PickleTool, RecipeTool } from "@/components/serialization-tools";
 import { CompressionTool, CyclicPatternTool, SymmetricCipherTool, ZipInspectorTool } from "@/components/pro-tools";
 import { BaseFamilyTool, BrainfuckTool, ClassicCipherTool, FrequencyTool, HiddenDataTool, JwtForgerTool, LsbStegoTool, MorseTool, QrDecoderTool, RsaSolverTool, VigenereTool } from "@/components/ctf-tools";
 import {
@@ -584,6 +585,9 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "png-crc-fixer": return <PngRepairTool />;
     case "exif-viewer": return <ExifViewerTool />;
     case "audio-spectrogram": return <AudioSpectrogramTool />;
+    case "recipe-chain": return <RecipeTool />;
+    case "php-unserialize": return <PhpSerializeTool />;
+    case "pickle-analyzer": return <PickleTool />;
     default: return null;
   }
 }
