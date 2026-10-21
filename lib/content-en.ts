@@ -383,4 +383,22 @@ export const toolsEn: Record<string, ToolCopy> = {
     steps: ["Drop a ZIP file (or an image with a ZIP appended) to see the entries, comment and CRC32s.", "If an entry shows Pseudo-encrypted, preview it directly or download the repaired ZIP.", "For real encryption, enter the password or paste a custom wordlist and click Dictionary attack."],
     useCases: ["Beat CTF pseudo-encryption where only the encryption flag was set.", "Recover ZipCrypto passwords with common weak passwords and custom wordlists.", "Read ZIP comments and check for data hidden before or after the archive."],
   },
+  "png-crc-fixer": {
+    description: "Check every PNG chunk CRC, brute-force tampered width and height, cross-check IDAT size and export the repaired image.",
+    intro: "A classic CTF misc image challenge: the PNG height has been shrunk so the flag is cropped off, but the IHDR CRC was still computed from the original size. This tool checks every chunk CRC, brute-forces the width and height that match it, cross-checks against the inflated IDAT size, and lets you preview and download the repaired image.",
+    steps: ["Drop a PNG to see its IHDR size and whether each chunk CRC is valid.", "If the IHDR CRC is wrong, the size found by brute force is filled in for you; you can also adjust it by hand.", "Click Repair and preview to check the full image, then download the repaired PNG."],
+    useCases: ["Recover flags hidden below a PNG whose height was reduced.", "Fix PNGs that image viewers refuse to open because of bad chunk CRCs.", "Catch tampering where the CRC was recomputed by comparing the IDAT data size."],
+  },
+  "exif-viewer": {
+    description: "Read EXIF, GPS coordinates, camera model, XMP and comments from JPEG, PNG, TIFF and WebP, and strip JPEG metadata.",
+    intro: "Photo EXIF can record where and when a picture was taken, the camera and the software — key clues in OSINT and CTF forensics and a common privacy leak. This tool reads EXIF, GPS, XMP and comments from JPEG, PNG, TIFF and WebP in your browser and turns GPS into clickable map coordinates.",
+    steps: ["Drop a photo or image file. It never leaves your browser.", "Review the GPS coordinates, camera model, capture time and fields like UserComment and XMP.", "Before sharing a photo, download a JPEG copy with the metadata removed."],
+    useCases: ["Find where a photo was taken from its GPS tags in OSINT challenges.", "Find flags hidden in ImageDescription, UserComment or XMP.", "Check and remove location-leaking metadata before sharing photos."],
+  },
+  "audio-spectrogram": {
+    description: "Draw spectrograms of WAV, MP3 and other audio in your browser to reveal hidden text, and decode DTMF phone tones automatically.",
+    intro: "Audio steganography is a CTF misc classic: text drawn into the spectrogram, or digits sent as phone dial tones (DTMF). Like Audacity or Sonic Visualiser, this tool computes a spectrogram in your browser and recognizes DTMF keys with the Goertzel algorithm — your audio is never uploaded.",
+    steps: ["Drop a WAV, MP3, OGG or FLAC file (up to 10 MB and 10 minutes).", "Look for text or shapes in the spectrogram; adjust the FFT size and the maximum frequency shown.", "If there are dial tones, the decoded DTMF keys appear right away, ready to copy."],
+    useCases: ["Find flag text drawn into a CTF audio file's spectrogram.", "Turn phone dial tones back into the keys pressed.", "Quickly check an audio file's dominant frequency and sample rate."],
+  },
 };

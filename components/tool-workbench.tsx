@@ -3,6 +3,7 @@
 import { useLocale, useT } from "@/components/locale";
 import { useMemo, useState } from "react";
 import { CopyButton, ErrorNotice, FileDropField, TextArea } from "@/components/tool-ui";
+import { AudioSpectrogramTool, ExifViewerTool, PngRepairTool } from "@/components/forensics-tools";
 import { CompressionTool, CyclicPatternTool, SymmetricCipherTool, ZipInspectorTool } from "@/components/pro-tools";
 import { BaseFamilyTool, BrainfuckTool, ClassicCipherTool, FrequencyTool, HiddenDataTool, JwtForgerTool, LsbStegoTool, MorseTool, QrDecoderTool, RsaSolverTool, VigenereTool } from "@/components/ctf-tools";
 import {
@@ -580,6 +581,9 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "cyclic-pattern": return <CyclicPatternTool />;
     case "compression-codec": return <CompressionTool />;
     case "zip-inspector": return <ZipInspectorTool />;
+    case "png-crc-fixer": return <PngRepairTool />;
+    case "exif-viewer": return <ExifViewerTool />;
+    case "audio-spectrogram": return <AudioSpectrogramTool />;
     default: return null;
   }
 }

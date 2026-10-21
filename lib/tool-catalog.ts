@@ -553,6 +553,21 @@ export const toolCatalog: ToolDefinition[] = [
     steps: ["拖放 ZIP 檔（也可以是接了 ZIP 的圖片），查看檔案列表、註解與 CRC32。", "若狀態顯示「偽加密」，直接預覽內容或下載修復後的 ZIP。", "真正加密的檔案可輸入密碼，或貼上自訂字典後按「字典攻擊」。"],
     useCases: ["破解 CTF 中把加密旗標改成 1 的 ZIP 偽加密。", "以常見弱密碼與自訂字典找回 ZipCrypto 密碼。", "讀取 ZIP 註解，並檢查壓縮檔前後是否夾帶其他資料。"],
   } },
+  { slug: "png-crc-fixer", name: "PNG 寬高與 CRC 修復", englishName: "PNG CRC & Dimension Fixer", description: "檢查 PNG 每個 chunk 的 CRC，暴力找回被竄改的寬高，比對 IDAT 資料量並輸出修復後的圖片。", category: "鑑識與分析", icon: "PNG", tags: ["png", "crc", "ihdr", "png height", "png 修復", "image forensics", "misc", "ctf"], featured: true, status: "new", guide: {
+    intro: "CTF Misc 最常見的圖片題之一：PNG 的高度被改小，flag 被裁在畫面之外，但 IHDR 的 CRC 仍是用原始尺寸算出來的。本工具會檢查每個 chunk 的 CRC，暴力搜尋符合 CRC 的寬高，並用 IDAT 解壓後的資料量交叉驗證，修復後直接預覽與下載。",
+    steps: ["拖放 PNG 檔，查看 IHDR 尺寸與每個 chunk 的 CRC 是否正確。", "若 IHDR CRC 錯誤，工具會自動填入暴力找到的正確寬高；也可以手動調整。", "按「修復並預覽」確認畫面完整，再下載修復後的 PNG。"],
+    useCases: ["找回被改小高度、藏在畫面下方的 flag。", "修復 chunk CRC 錯誤導致看圖軟體無法開啟的 PNG。", "比對 IDAT 資料量，發現 CRC 也被重算過的竄改。"],
+  } },
+  { slug: "exif-viewer", name: "EXIF 與 GPS 中繼資料檢視", englishName: "EXIF, GPS & Metadata Viewer", description: "讀取 JPEG、PNG、TIFF、WebP 的 EXIF、GPS 座標、相機型號、XMP 與註解，並可移除 JPEG 中繼資料。", category: "鑑識與分析", icon: "GPS", tags: ["exif", "exif viewer", "gps", "metadata", "中繼資料", "osint", "xmp", "照片位置", "forensics", "ctf"], featured: true, status: "new", guide: {
+    intro: "照片的 EXIF 可能記錄拍攝地點、時間、相機與軟體，是 OSINT 與 CTF Forensics 的重要線索，也是隱私外洩的常見來源。本工具在瀏覽器讀取 JPEG、PNG、TIFF 與 WebP 的 EXIF、GPS、XMP 與註解，並把 GPS 轉成可點擊的地圖座標。",
+    steps: ["拖放照片或圖片檔，檔案不會上傳。", "查看 GPS 座標、相機型號、拍攝時間與 UserComment、XMP 等欄位。", "需要分享照片時，下載移除中繼資料的 JPEG 版本。"],
+    useCases: ["OSINT 題從照片的 GPS 找出拍攝地點。", "找出藏在 ImageDescription、UserComment 或 XMP 裡的 flag。", "分享照片前確認並移除會洩漏位置的中繼資料。"],
+  } },
+  { slug: "audio-spectrogram", name: "音訊頻譜圖與 DTMF 解碼", englishName: "Audio Spectrogram & DTMF Decoder", description: "在瀏覽器畫出 WAV、MP3 等音訊的頻譜圖，找出藏在頻率裡的文字，並自動解碼 DTMF 電話撥號音。", category: "鑑識與分析", icon: "♫", tags: ["spectrogram", "頻譜圖", "audio steganography", "音訊隱寫", "dtmf", "sonic visualiser", "wav", "ctf"], featured: true, status: "new", guide: {
+    intro: "音訊隱寫是 CTF Misc 的經典題型：把文字畫在頻譜圖上，或用電話撥號音（DTMF）傳遞數字。本工具像 Audacity、Sonic Visualiser 一樣在瀏覽器計算頻譜圖，並以 Goertzel 演算法自動辨識 DTMF 按鍵，音檔不會上傳。",
+    steps: ["拖放 WAV、MP3、OGG 或 FLAC 音檔（上限 10 MB、10 分鐘）。", "觀察頻譜圖是否出現文字或圖案，可調整 FFT 大小與顯示頻率上限。", "若有撥號音，DTMF 解碼結果會直接顯示，可一鍵複製。"],
+    useCases: ["找出 CTF 音檔頻譜圖中畫出的 flag 文字。", "把電話撥號音還原成按鍵數字。", "快速檢查音檔的主要頻率與取樣率。"],
+  } },
 ];
 
 export function findTool(slug: string) {

@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { toolCatalog } from "../../lib/tool-catalog.ts";
 import { translate } from "../../lib/translate.ts";
+import { encodeWav, synthesizeDtmf } from "../../lib/media-utils.ts";
 
 const outDir = fileURLToPath(new URL("../../out/", import.meta.url));
 if (!existsSync(join(outDir, "index.html"))) throw new Error("out/ is missing; run `npm run build` first.");
@@ -159,6 +160,21 @@ const specs = {
     await p.locator(".zip-table > div").nth(2).getByRole("button", { name: label(p, "預覽"), exact: true }).click(); await has(p, "flag{pseudo_encryption_is_not_encryption}");
     await p.locator(".workbench input[type=file]").setInputFiles({ name: "encrypted.zip", mimeType: "application/zip", buffer: await readFile(new URL("./fixtures/encrypted.zip", import.meta.url)) });
     await has(p, "已加密"); await click(p, "字典攻擊"); await has(p, "letmein"); await has(p, "flag{zipcrypto_cracked}");
+  },
+  "png-crc-fixer": async (p) => {
+    await click(p, "載入範例"); await has(p, "IHDR CRC 錯誤：寬高可能被竄改"); await has(p, "360 × 160");
+    await click(p, "修復並預覽"); await p.locator(".workbench canvas:not([hidden])").waitFor();
+    const size = await p.locator(".workbench canvas").evaluate((canvas) => `${canvas.width}x${canvas.height}`); if (size !== "360x160") throw new Error(`repaired size ${size}`);
+    await p.locator(".workbench input[type=file]").setInputFiles({ name: "short.png", mimeType: "image/png", buffer: await readFile(new URL("./fixtures/short-height.png", import.meta.url)) }); await has(p, "120 × 60");
+  },
+  "exif-viewer": async (p) => {
+    await click(p, "載入範例"); await has(p, "iPhone 15 Pro"); await has(p, "25.033964, 121.564468"); await has(p, "flag{exif_metadata_leaks_location}");
+    await p.locator(".workbench input[type=file]").setInputFiles({ name: "exif.jpg", mimeType: "image/jpeg", buffer: await readFile(new URL("./fixtures/exif.jpg", import.meta.url)) }); await has(p, "flag{user_comment}"); await has(p, "-33.856944, -70.168056");
+  },
+  "audio-spectrogram": async (p) => {
+    await click(p, "載入範例"); await has(p, "8675309#");
+    await file(p, "tones.wav", encodeWav(synthesizeDtmf("1337", 44100), 44100)); await has(p, "44,100 Hz"); await has(p, "1337");
+    const width = await p.locator(".workbench canvas").evaluate((canvas) => canvas.width); if (width < 10) throw new Error(`spectrogram width ${width}`);
   },
   "path-traversal-analyzer": async (p) => { await click(p, "分析 Path Traversal"); await has(p, "高風險"); await has(p, "etc/passwd"); },
 };

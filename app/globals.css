@@ -873,7 +873,15 @@ kbd { display: inline-block; min-width: 20px; border: 1px solid var(--line-dark)
 .zip-status--encrypted { background: var(--red-soft); color: var(--red); }
 .zip-actions { display: flex; gap: 6px; }
 .zip-actions .ghost-button { min-height: 32px; padding: 0 12px; }
+.file-drop + .button-row { margin-top: 12px; }
+.hidden-report .result-block .secondary-button { align-self: flex-start; padding: 0 18px; }
+.hidden-report .result-block code { white-space: pre-wrap; }
+.png-table > div { grid-template-columns: minmax(0, 1fr) 90px 90px 70px; }
+.exif-table > div { grid-template-columns: 70px minmax(0, 200px) minmax(0, 1fr); }
+.exif-table code { overflow-wrap: anywhere; }
+.spectrogram-canvas { height: 320px; object-fit: fill; image-rendering: auto; }
 @media (max-width: 680px) {
+  .png-table > div, .exif-table > div { grid-template-columns: minmax(0, 1fr) auto; }
   .cipher-options__wide { grid-column: auto; }
   .zip-table > div { grid-template-columns: minmax(0, 1fr) auto; }
   .zip-table > div:first-child { display: none; }
