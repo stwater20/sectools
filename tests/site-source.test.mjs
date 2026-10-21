@@ -103,11 +103,24 @@ test("site metadata derives tool counts and lists category pages in the sitemap"
 test("English dictionary covers every Chinese string the tool UIs pass to t()", async () => {
   const { enDictionary, enPatterns } = await import("../lib/i18n-en.ts");
   const missing = [];
-  for (const file of ["../components/tool-workbench.tsx", "../components/ctf-tools.tsx", "../components/tool-ui.tsx"]) {
+  for (const file of ["../components/tool-workbench.tsx", "../components/ctf-tools.tsx", "../components/tool-ui.tsx", "../components/pro-tools.tsx"]) {
     const source = await readFile(new URL(file, import.meta.url), "utf8");
     for (const match of source.matchAll(/\bt\(("(?:[^"\\]|\\.)*")/g)) {
       const key = JSON.parse(match[1]).trim();
       if (/[\u3400-\u9fff]/.test(key) && !(key in enDictionary) && !enPatterns.some(([pattern]) => pattern.test(key))) missing.push(key);
+    }
+  }
+  assert.deepEqual(missing, []);
+});
+
+test("English dictionary covers error messages thrown by the newer tool libraries", async () => {
+  const { translate } = await import("../lib/translate.ts");
+  const missing = [];
+  for (const file of ["../lib/crypto-utils.ts", "../lib/archive-utils.ts"]) {
+    const source = await readFile(new URL(file, import.meta.url), "utf8");
+    for (const match of source.matchAll(/Error\((?:"((?:[^"\\]|\\.)*)"|`([^`]*)`)\)/g)) {
+      const text = match[1] !== undefined ? JSON.parse(`"${match[1]}"`) : match[2].replace(/\$\{[^}]+\}/g, "16");
+      if (/[\u3400-\u9fff]/.test(translate("en", text))) missing.push(text);
     }
   }
   assert.deepEqual(missing, []);

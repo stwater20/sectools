@@ -144,6 +144,22 @@ const specs = {
     const bytes = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82, 0x50, 0x4b, 0x03, 0x04, ...Buffer.from("flag{hidden_zip}")];
     await file(p, "image.png", bytes); await has(p, "ZIP archive"); await has(p, "IEND 之後有額外資料"); await has(p, "flag{hidden_zip}");
   },
+  "symmetric-cipher": async (p) => {
+    await click(p, "載入範例"); await click(p, "解密"); await has(p, "flag{aes_cbc_decrypted}");
+    await click(p, "RC4"); await inp(p, 0).fill("Key"); await ta(p, 0).fill("Plaintext"); await p.locator(".workbench select").nth(1).selectOption("text"); await p.locator(".workbench select").nth(2).selectOption("hex"); await click(p, "加密"); await has(p, "bbf316e8d940af0ad3");
+    await click(p, "DES"); await inp(p, 0).fill("short"); await click(p, "加密"); await p.locator(".error-notice").waitFor();
+  },
+  "cyclic-pattern": async (p) => { await click(p, "產生 Pattern"); await has(p, "aaaabaaacaaadaaaeaaa"); await click(p, "載入範例"); await has(p, "44"); await inp(p, 1).fill("0x6161616161616164"); await click(p, "64 位元（n = 8）"); await click(p, "計算 Offset"); await has(p, "24"); },
+  "compression-codec": async (p) => {
+    await click(p, "載入範例"); await click(p, "解壓縮"); await has(p, "flag{zlib_inflated}");
+    await file(p, "flag.gz", Buffer.from("1f8b08000000000000034bcb494caf4eafca2ca80500c02e8cdf0a000000", "hex")); await has(p, "flag{gzip}");
+  },
+  "zip-inspector": async (p) => {
+    await click(p, "載入範例"); await has(p, "偽加密"); await has(p, "Hint: is it really encrypted?");
+    await p.locator(".zip-table > div").nth(2).getByRole("button", { name: label(p, "預覽"), exact: true }).click(); await has(p, "flag{pseudo_encryption_is_not_encryption}");
+    await p.locator(".workbench input[type=file]").setInputFiles({ name: "encrypted.zip", mimeType: "application/zip", buffer: await readFile(new URL("./fixtures/encrypted.zip", import.meta.url)) });
+    await has(p, "已加密"); await click(p, "字典攻擊"); await has(p, "letmein"); await has(p, "flag{zipcrypto_cracked}");
+  },
   "path-traversal-analyzer": async (p) => { await click(p, "分析 Path Traversal"); await has(p, "高風險"); await has(p, "etc/passwd"); },
 };
 

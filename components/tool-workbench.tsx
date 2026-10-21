@@ -3,6 +3,7 @@
 import { useLocale, useT } from "@/components/locale";
 import { useMemo, useState } from "react";
 import { CopyButton, ErrorNotice, FileDropField, TextArea } from "@/components/tool-ui";
+import { CompressionTool, CyclicPatternTool, SymmetricCipherTool, ZipInspectorTool } from "@/components/pro-tools";
 import { BaseFamilyTool, BrainfuckTool, ClassicCipherTool, FrequencyTool, HiddenDataTool, JwtForgerTool, LsbStegoTool, MorseTool, QrDecoderTool, RsaSolverTool, VigenereTool } from "@/components/ctf-tools";
 import {
   analyzeEmailHeaders,
@@ -575,6 +576,10 @@ export function ToolWorkbench({ slug }: { slug: string }) {
     case "lsb-steganography": return <LsbStegoTool />;
     case "qr-code-decoder": return <QrDecoderTool />;
     case "hidden-data-scanner": return <HiddenDataTool />;
+    case "symmetric-cipher": return <SymmetricCipherTool />;
+    case "cyclic-pattern": return <CyclicPatternTool />;
+    case "compression-codec": return <CompressionTool />;
+    case "zip-inspector": return <ZipInspectorTool />;
     default: return null;
   }
 }

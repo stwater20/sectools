@@ -41,13 +41,13 @@ import {
   type VigenereCandidate,
 } from "@/lib/ctf-utils";
 
-const maxFileSize = 10_000_000;
+export const maxFileSize = 10_000_000;
 
-function errorMessage(cause: unknown, fallback: string) {
+export function errorMessage(cause: unknown, fallback: string) {
   return cause instanceof Error ? cause.message : fallback;
 }
 
-function SampleButton({ onClick }: { onClick: () => void }) { const t = useT();
+export function SampleButton({ onClick }: { onClick: () => void }) { const t = useT();
   return <button className="ghost-button sample-button" type="button" onClick={onClick}>{t("載入範例")}</button>;
 }
 
@@ -66,7 +66,7 @@ function CandidateList({ items }: { items: RankedCandidate[] }) { const t = useT
   );
 }
 
-function downloadBytes(bytes: Uint8Array, filename: string) {
+export function downloadBytes(bytes: Uint8Array, filename: string) {
   const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: "application/octet-stream" }));
   const link = document.createElement("a");
   link.href = url;
@@ -490,7 +490,7 @@ export function JwtForgerTool() { const t = useT();
 
 /* ---------- Image helpers ---------- */
 
-async function loadImageData(file: File, maxSide = 4096) {
+export async function loadImageData(file: File, maxSide = 4096) {
   if (file.size > maxFileSize) throw new Error("圖片超過 10 MB 上限。 ");
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
@@ -506,7 +506,7 @@ async function loadImageData(file: File, maxSide = 4096) {
   return { data: context.getImageData(0, 0, width, height), scaled: scale < 1 };
 }
 
-function usePastedFile(onFile: (file: File) => void) {
+export function usePastedFile(onFile: (file: File) => void) {
   const callback = useRef(onFile);
   useEffect(() => { callback.current = onFile; });
   useEffect(() => {

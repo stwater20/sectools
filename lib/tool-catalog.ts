@@ -533,6 +533,26 @@ export const toolCatalog: ToolDefinition[] = [
     steps: ["選擇或拖放要分析的檔案（上限 10 MB），檔案不會上傳。", "查看找到的檔案簽章與位移，以及 PNG／JPEG 結構線索。", "按「擷取下載」取出內嵌檔案，再用對應工具繼續分析。"],
     useCases: ["找出接在 JPEG 或 PNG 結尾後的 ZIP／RAR 壓縮檔。", "讀取 PNG tEXt 區塊與 JPEG COM 註解中的提示。", "快速搜尋檔案中 flag{...} 形式的字串。"],
   } },
+  { slug: "symmetric-cipher", name: "AES／DES／RC4 加解密", englishName: "AES, DES & RC4 Encrypt / Decrypt", description: "在瀏覽器用 AES、DES、3DES 或 RC4 加解密，支援 ECB、CBC、CTR 模式、PKCS#7 padding 與文字／Hex／Base64 輸入輸出。", category: "CTF 工具", icon: "AES", tags: ["aes", "aes decrypt", "des", "3des", "rc4", "ecb", "cbc", "ctr", "對稱加密", "crypto", "ctf"], featured: true, status: "new", guide: {
+    intro: "CTF Crypto 與逆向題常給你 Key、IV 和一段密文，要求還原 AES、DES 或 RC4 加密的 flag。瀏覽器的 Web Crypto 不支援 ECB、DES 與 RC4，本工具以純 JavaScript 實作，Key、IV、資料都能分別選擇文字、Hex 或 Base64 格式。",
+    steps: ["選擇演算法與模式（ECB／CBC／CTR），填入 Key 與 IV，並設定各自的格式。", "貼上密文並選擇輸入格式，按「解密」；加密時則貼明文按「加密」。", "切換輸出格式檢視結果；若出現 padding 錯誤，檢查 Key／IV 或取消 PKCS#7 padding。"],
+    useCases: ["解出逆向分析中找到 Key 的 AES-CBC／ECB 加密字串。", "驗證惡意程式設定檔使用的 RC4 或 DES 金鑰。", "比對自己寫的加密程式與標準實作的輸出是否一致。"],
+  } },
+  { slug: "cyclic-pattern", name: "Cyclic Pattern 偏移計算", englishName: "Cyclic Pattern Generator & Offset Finder", description: "產生與 pwntools cyclic() 相同的 de Bruijn pattern，貼上崩潰時的 EIP／RIP 即可算出 buffer overflow 偏移量。", category: "CTF 工具", icon: "aab", tags: ["cyclic", "pattern create", "pattern offset", "de bruijn", "buffer overflow", "pwn", "pwntools", "ctf"], featured: true, status: "new", guide: {
+    intro: "Pwn 題的第一步通常是找出覆寫返回位址需要多少 bytes。本工具產生與 pwntools cyclic() 完全相同的 de Bruijn 序列；程式崩潰後把 EIP／RIP 的值貼回來，就能立即算出偏移量，不必安裝任何套件。",
+    steps: ["選擇 32 或 64 位元，輸入長度並產生 Pattern，作為程式輸入讓它崩潰。", "在 gdb 中查看 EIP／RIP，或 RSP 指向的 8 bytes，複製該值。", "貼到右側並按「計算 Offset」，得到 padding 長度後撰寫 exploit。"],
+    useCases: ["計算 stack buffer overflow 覆寫返回位址的偏移量。", "沒有 pwntools 或 Metasploit 的環境下替代 pattern_create／pattern_offset。", "確認 64 位元程式 RSP 上的資料位於輸入的哪個位置。"],
+  } },
+  { slug: "compression-codec", name: "gzip／zlib 壓縮解壓縮", englishName: "gzip / zlib / Deflate Decompressor", description: "自動辨識並解壓 gzip、zlib 與 raw deflate 資料，支援 Base64、Hex 與檔案輸入，也能反向壓縮。", category: "編碼與雜湊", icon: "gz", tags: ["gzip", "zlib", "deflate", "inflate", "decompress", "解壓縮", "base64", "ctf"], status: "new", guide: {
+    intro: "CTF 與惡意程式分析常遇到「Base64 解完是一堆亂碼」的情況，其實那是 zlib 或 gzip 壓縮過的資料，例如 PowerShell 載荷、Cookie 與 PDF 串流。本工具會依開頭的 Magic Bytes 自動判斷格式並解壓，全程在瀏覽器完成。",
+    steps: ["貼上 Base64 或 Hex 壓縮資料並選擇輸入格式，或直接拖放 .gz 檔案。", "保留「自動偵測」並按「解壓縮」，工具會判斷 gzip、zlib 或 raw deflate。", "切換輸出格式檢視結果，或下載解壓後的 bytes 交給其他工具分析。"],
+    useCases: ["還原 eJ 或 H4sI 開頭的 Base64 字串（zlib／gzip）。", "解開 PowerShell 中 DeflateStream／GzipStream 壓縮的惡意載荷。", "把文字壓縮成 zlib 或 gzip，用於 payload 測試與比對。"],
+  } },
+  { slug: "zip-inspector", name: "ZIP 分析與密碼破解", englishName: "ZIP Inspector & Password Cracker", description: "列出 ZIP 內容、註解與 CRC32，自動偵測並修復偽加密，ZipCrypto 加密檔可用字典攻擊找出密碼。", category: "鑑識與分析", icon: "zip", tags: ["zip", "zip password", "zip 密碼", "偽加密", "pseudo encryption", "zipcrypto", "crc32", "forensics", "ctf"], featured: true, status: "new", guide: {
+    intro: "ZIP 是 CTF Misc 題的常客：偽加密、藏在註解裡的提示、接在圖片後面的壓縮檔，或是用弱密碼保護的檔案。本工具在瀏覽器解析 ZIP 結構，自動判斷加密是真是假，並可用內建常見密碼或自訂字典嘗試 ZipCrypto 密碼。",
+    steps: ["拖放 ZIP 檔（也可以是接了 ZIP 的圖片），查看檔案列表、註解與 CRC32。", "若狀態顯示「偽加密」，直接預覽內容或下載修復後的 ZIP。", "真正加密的檔案可輸入密碼，或貼上自訂字典後按「字典攻擊」。"],
+    useCases: ["破解 CTF 中把加密旗標改成 1 的 ZIP 偽加密。", "以常見弱密碼與自訂字典找回 ZipCrypto 密碼。", "讀取 ZIP 註解，並檢查壓縮檔前後是否夾帶其他資料。"],
+  } },
 ];
 
 export function findTool(slug: string) {

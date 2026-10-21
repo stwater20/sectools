@@ -359,4 +359,28 @@ export const toolsEn: Record<string, ToolCopy> = {
     steps: ["Choose or drop a file (up to 10 MB). It never leaves your browser.", "Review the file signatures, offsets and PNG/JPEG structure clues.", "Click Extract to save an embedded file and analyze it with the matching tool."],
     useCases: ["Find ZIP or RAR archives appended to JPEG or PNG files.", "Read hints in PNG tEXt chunks and JPEG COM comments.", "Search a file for flag{...} strings quickly."],
   },
+  "symmetric-cipher": {
+    description: "Encrypt and decrypt AES, DES, 3DES and RC4 in your browser with ECB, CBC and CTR modes, PKCS#7 padding and text, hex or Base64 I/O.",
+    intro: "CTF crypto and reversing challenges often hand you a key, an IV and a ciphertext and ask you to recover an AES-, DES- or RC4-encrypted flag. Web Crypto has no ECB, DES or RC4, so this tool implements them in plain JavaScript, and the key, IV and data each take text, hex or Base64.",
+    steps: ["Pick the algorithm and mode (ECB, CBC or CTR), then enter the key and IV and set their formats.", "Paste the ciphertext, choose its format and click Decrypt — or paste plaintext and click Encrypt.", "Switch the output format to inspect the result. On a padding error, check the key and IV or turn off PKCS#7 padding."],
+    useCases: ["Decrypt AES-CBC or ECB strings after finding the key while reversing a binary.", "Verify the RC4 or DES keys used in a malware configuration.", "Check your own encryption code against a reference implementation."],
+  },
+  "cyclic-pattern": {
+    description: "Generate the same de Bruijn pattern as pwntools cyclic(), then paste the crashing EIP/RIP to get your buffer overflow offset.",
+    intro: "The first step in most pwn challenges is finding how many bytes it takes to overwrite the return address. This tool generates exactly the same de Bruijn sequence as pwntools cyclic(); paste the EIP/RIP value after the crash and you get the offset immediately, with nothing to install.",
+    steps: ["Choose 32- or 64-bit, set a length and generate the pattern, then feed it to the program to crash it.", "In gdb, read EIP/RIP or the 8 bytes RSP points to and copy the value.", "Paste it on the right and click Find offset to get the padding length for your exploit."],
+    useCases: ["Find the offset that overwrites the saved return address in a stack overflow.", "Replace pattern_create/pattern_offset where pwntools or Metasploit isn't installed.", "Locate which part of your input ended up on RSP in a 64-bit binary."],
+  },
+  "compression-codec": {
+    description: "Detect and decompress gzip, zlib and raw deflate data from Base64, hex or files — and compress text back.",
+    intro: "In CTFs and malware analysis, Base64 that decodes to garbage is often zlib- or gzip-compressed data: PowerShell payloads, cookies or PDF streams. This tool reads the magic bytes to pick the format and decompresses it entirely in your browser.",
+    steps: ["Paste Base64 or hex compressed data and choose its format, or drop a .gz file.", "Leave Auto-detect selected and click Decompress; the tool chooses gzip, zlib or raw deflate.", "Switch the output format to inspect the result, or download the bytes for other tools."],
+    useCases: ["Decode Base64 strings that start with eJ (zlib) or H4sI (gzip).", "Unpack PowerShell payloads compressed with DeflateStream or GzipStream.", "Compress text as zlib or gzip for payload testing and comparison."],
+  },
+  "zip-inspector": {
+    description: "List ZIP entries, comments and CRC32s, detect and fix pseudo-encryption, and crack ZipCrypto passwords with a wordlist.",
+    intro: "ZIP files are CTF misc regulars: pseudo-encryption, hints in comments, archives glued to images and weak passwords. This tool parses the ZIP structure in your browser, tells real encryption from fake, and tries ZipCrypto passwords from a built-in list of common passwords or your own wordlist.",
+    steps: ["Drop a ZIP file (or an image with a ZIP appended) to see the entries, comment and CRC32s.", "If an entry shows Pseudo-encrypted, preview it directly or download the repaired ZIP.", "For real encryption, enter the password or paste a custom wordlist and click Dictionary attack."],
+    useCases: ["Beat CTF pseudo-encryption where only the encryption flag was set.", "Recover ZipCrypto passwords with common weak passwords and custom wordlists.", "Read ZIP comments and check for data hidden before or after the archive."],
+  },
 };
