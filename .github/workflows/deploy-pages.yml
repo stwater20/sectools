@@ -16,7 +16,8 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright can't install its browser dependencies on newer runner images until it adds support.
+    runs-on: ubuntu-24.04
     env:
       CUSTOM_DOMAIN: tools.sectools.tw
       # Optional: add these as repository variables (Settings → Secrets and variables → Actions → Variables).
