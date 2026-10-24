@@ -17,6 +17,7 @@ function rich(text: string): ReactNode[] {
 }
 
 const sectionId = (index: number) => `section-${index + 1}`;
+const guideImage = (slug: string, locale: Locale) => (locale === "en" ? `/og/en/guides/${slug}.jpg` : `/og/guides/${slug}.jpg`);
 
 export function guidesIndexMetadata(locale: Locale): Metadata {
   const strings = ui[locale];
@@ -84,7 +85,7 @@ export function guideMetadata(slug: string, locale: Locale): Metadata {
   if (!guide) return {};
   const copy = guide[locale];
   const path = `/guides/${slug}/`;
-  const image = locale === "en" ? "/og-en.jpg" : "/og.jpg";
+  const image = guideImage(slug, locale);
   return {
     title: copy.title,
     description: copy.description,
@@ -109,7 +110,7 @@ export function GuidePage({ slug, locale }: { slug: string; locale: Locale }) {
   const structuredData = [
     {
       "@context": "https://schema.org", "@type": "TechArticle", headline: copy.title, description: copy.description, inLanguage: htmlLang[locale], url: pageUrl,
-      datePublished: guide.published, dateModified: guide.updated, image: absoluteUrl(locale === "en" ? "/og-en.jpg" : "/og.jpg"),
+      datePublished: guide.published, dateModified: guide.updated, image: absoluteUrl(guideImage(slug, locale)),
       author: { "@type": "Organization", name: "SecTools.tw", url: "https://sectools.tw/" },
       publisher: { "@type": "Organization", name: "SecTools.tw", url: "https://sectools.tw/", logo: { "@type": "ImageObject", url: absoluteUrl("/icon-512.png") } },
       mainEntityOfPage: pageUrl,

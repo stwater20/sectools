@@ -11,7 +11,7 @@
 | 結構化資料 | WebSite + SearchAction、Organization、ItemList、WebApplication、HowTo、BreadcrumbList、FAQPage、CollectionPage |
 | 長尾內容 | 每個工具頁都有獨立的介紹、步驟、使用情境與 FAQ（中英各一份） |
 | 教學指南 | `/guides/` 7 篇中英對照長文（CTF 入門、編碼辨識、照片 EXIF 隱私、JWT 檢查清單、AI 模型 pickle 風險、PNG CRC、釣魚網址），TechArticle + FAQPage 結構化資料，並與工具頁雙向連結 |
-| 分享預覽 | 中文 `og.jpg`、英文 `og-en.jpg`，Twitter／X summary_large_image |
+| 分享預覽 | 每個工具與教學都有專屬的中英文分享圖（`public/og/`，由 `scripts/og-images.mjs` 產生），首頁使用 `og.jpg`／`og-en.jpg`；Twitter／X summary_large_image |
 | AI 搜尋 | `/llms.txt` 以純文字列出所有工具與說明，方便 ChatGPT、Perplexity、Claude 等引用 |
 | IndexNow | 每次部署後自動把 sitemap 網址送給 IndexNow（Bing、Yandex、Seznam、Naver 等） |
 | 驗證碼 | 可用 repository variables 設定 `GOOGLE_SITE_VERIFICATION`、`BING_SITE_VERIFICATION` |

@@ -286,6 +286,10 @@ await check("guides index, articles and tool cross-links", async () => {
       if (locale === "en") assert.ok(!cjk.test(await page.locator("main").innerText()), `${guide.slug} has Chinese text on the English page`);
     }
     await page.goto(`${B}${prefix}/exif-viewer/`, { waitUntil: "load" });
+    const ogImage = new URL(await page.locator('meta[property="og:image"]').getAttribute("content")).pathname;
+    assert.equal(ogImage, `/og${prefix}/exif-viewer.jpg`);
+    const response = await page.request.get(`${B}${ogImage}`);
+    assert.equal(response.headers()["content-type"], "image/jpeg");
     await page.locator(`.tool-guides-links a[href="${prefix}/guides/photo-exif-location/"]`).waitFor();
   }
 });

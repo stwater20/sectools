@@ -96,3 +96,13 @@ Cloudflare 端也應關閉 Zaraz 與 Web Analytics 自動注入，避免加入�
 ## 授權
 
 程式碼建議以 MIT License 發布；品牌名稱與識別仍屬 SecTools.tw。
+
+### 分享預覽圖
+
+每個工具與教學頁都有專屬的 1200×630 分享圖（`public/og/`）。新增工具或教學後執行：
+
+```bash
+FONT_DIR=/path/to/fonts node scripts/og-images.mjs   # 或只重畫指定項目：… node scripts/og-images.mjs <slug>
+```
+
+`FONT_DIR` 需包含 `@fontsource/noto-sans-tc` 的 `noto-sans-tc-chinese-traditional-{500,900}-normal.woff2` 與 `@fontsource-variable/inter` 的 `inter-latin-wght-normal.woff2`。缺圖時單元測試會失敗提醒。

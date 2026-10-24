@@ -166,3 +166,14 @@ test("guides are complete in both languages and link to real tools", async () =>
     assert.doesNotMatch(JSON.stringify(guide.en), /[\u3400-\u9fff]/, `${guide.slug} English copy contains Chinese`);
   }
 });
+
+test("every tool and guide has its own share image in both languages", async () => {
+  const { existsSync } = await import("node:fs");
+  const { guides } = await import("../lib/guides.ts");
+  const files = [
+    ...toolCatalog.flatMap((tool) => [`og/${tool.slug}.jpg`, `og/en/${tool.slug}.jpg`]),
+    ...guides.flatMap((guide) => [`og/guides/${guide.slug}.jpg`, `og/en/guides/${guide.slug}.jpg`]),
+  ];
+  const missing = files.filter((file) => !existsSync(new URL(`../public/${file}`, import.meta.url)));
+  assert.deepEqual(missing, [], "run `FONT_DIR=… node scripts/og-images.mjs` to render missing share images");
+});

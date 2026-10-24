@@ -42,7 +42,7 @@ export function toolMetadata(slug: string, locale: Locale): Metadata {
   const keywords = locale === "en"
     ? [tool.name, `${tool.name} online`, `free ${tool.name.toLowerCase()}`, tool.category.name, ...tool.tags]
     : [tool.name, tool.altName, tool.category.name, ...tool.tags, `${tool.name} 線上工具`, `${tool.altName} online`, `${tool.name} 免費`, "繁體中文資安工具"];
-  const image = locale === "en" ? "/og-en.jpg" : "/og.jpg";
+  const image = locale === "en" ? `/og/en/${slug}.jpg` : `/og/${slug}.jpg`;
   return {
     title,
     description,
