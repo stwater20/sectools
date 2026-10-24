@@ -1,4 +1,5 @@
 import { localizedCategories, localizedTools } from "@/lib/content";
+import { guides } from "@/lib/guides";
 import { absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-static";
@@ -21,6 +22,10 @@ export function GET() {
 Every tool page includes the interactive tool, a how-to guide, use cases and an FAQ. Source code: https://github.com/stwater20/sectools
 
 ${sections.join("\n\n")}
+
+## Guides
+
+${guides.map((guide) => `- [${guide.en.title}](${absoluteUrl(`/en/guides/${guide.slug}/`)}): ${guide.en.description} (中文：[${guide.zh.title}](${absoluteUrl(`/guides/${guide.slug}/`)}))`).join("\n")}
 `;
   return new Response(body, { headers: { "content-type": "text/plain; charset=utf-8" } });
 }

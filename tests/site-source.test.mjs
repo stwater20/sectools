@@ -143,3 +143,26 @@ test("every tool has English page content", async () => {
   }
   for (const category of categories) assert.ok(categoriesEn[category.slug], `${category.slug} is missing English content`);
 });
+
+test("guides are complete in both languages and link to real tools", async () => {
+  const { guides } = await import("../lib/guides.ts");
+  const slugs = new Set(toolCatalog.map((tool) => tool.slug));
+  assert.ok(guides.length >= 5);
+  assert.equal(new Set(guides.map((guide) => guide.slug)).size, guides.length);
+  for (const guide of guides) {
+    assert.match(guide.slug, /^[a-z0-9-]+$/);
+    assert.match(guide.updated, /^\d{4}-\d{2}-\d{2}$/);
+    for (const slug of guide.tools) assert.ok(slugs.has(slug), `${guide.slug} links unknown tool ${slug}`);
+    assert.equal(guide.zh.sections.length, guide.en.sections.length, `${guide.slug} section count differs`);
+    assert.equal(guide.zh.faq.length, guide.en.faq.length, `${guide.slug} FAQ count differs`);
+    for (const locale of ["zh", "en"]) {
+      const copy = guide[locale];
+      assert.ok(copy.description.length >= 50 && copy.description.length <= (locale === "en" ? 160 : 100), `${guide.slug} ${locale} description length ${copy.description.length}`);
+      for (const [index, section] of copy.sections.entries()) {
+        assert.deepEqual(section.tools ?? [], guide.zh.sections[index].tools ?? [], `${guide.slug} ${locale} section ${index} tools differ`);
+        for (const slug of section.tools ?? []) assert.ok(slugs.has(slug), `${guide.slug} section links unknown tool ${slug}`);
+      }
+    }
+    assert.doesNotMatch(JSON.stringify(guide.en), /[\u3400-\u9fff]/, `${guide.slug} English copy contains Chinese`);
+  }
+});

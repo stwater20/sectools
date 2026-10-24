@@ -7,9 +7,10 @@
 | 項目 | 內容 |
 |---|---|
 | 中英雙語 | 每個頁面都有 `/…` 與 `/en/…` 兩個版本，`<html lang>`、canonical 與 hreflang（zh-Hant-TW / en / x-default）皆正確 |
-| Sitemap | `/sitemap.xml` 含 118 個網址，每筆都列出另一語言的對應頁 |
+| Sitemap | `/sitemap.xml` 含 154 個網址（教學文章帶有實際更新日期），每筆都列出另一語言的對應頁 |
 | 結構化資料 | WebSite + SearchAction、Organization、ItemList、WebApplication、HowTo、BreadcrumbList、FAQPage、CollectionPage |
 | 長尾內容 | 每個工具頁都有獨立的介紹、步驟、使用情境與 FAQ（中英各一份） |
+| 教學指南 | `/guides/` 7 篇中英對照長文（CTF 入門、編碼辨識、照片 EXIF 隱私、JWT 檢查清單、AI 模型 pickle 風險、PNG CRC、釣魚網址），TechArticle + FAQPage 結構化資料，並與工具頁雙向連結 |
 | 分享預覽 | 中文 `og.jpg`、英文 `og-en.jpg`，Twitter／X summary_large_image |
 | AI 搜尋 | `/llms.txt` 以純文字列出所有工具與說明，方便 ChatGPT、Perplexity、Claude 等引用 |
 | IndexNow | 每次部署後自動把 sitemap 網址送給 IndexNow（Bing、Yandex、Seznam、Naver 等） |
@@ -33,7 +34,7 @@
 也把 GitHub repo 的 **About** 填上網址，並加上 topics：`ctf-tools`、`security-tools`、`cyberchef-alternative`、`jwt`、`steganography`、`rsa`、`privacy`、`nextjs`。
 
 ### 3. 發布與社群（集中在同一週，效果最好）
-- **Hacker News**：`Show HN: 51 security/CTF tools that run entirely in your browser`，強調「不上傳」與開源。
+- **Hacker News**：`Show HN: 61 security/CTF tools that run entirely in your browser`，強調「不上傳」與開源。
 - **Reddit**：r/securityCTF、r/cybersecurity、r/netsec（遵守自我推廣規則，先貢獻內容）、r/webdev。
 - **Product Hunt**：準備 5 張截圖（首頁、RSA 求解、LSB 隱寫、深色模式、手機）。
 - **X／Mastodon（infosec.exchange）**：每天介紹一個工具，附 GIF 示範。
@@ -41,7 +42,9 @@
 - **CTF 賽事**：在 CTFtime 的隊伍頁或 writeup 中引用工具連結；贊助或合作校園 CTF，把工具放進題目提示。
 
 ### 4. 持續產生內容（長期 SEO）
-- 針對高搜尋量問題寫教學文，例如「CTF RSA 題型整理」、「如何判斷是哪種 Base 編碼」、「JWT alg=none 攻擊原理」，每篇連到對應工具。
+- 教學文放在 `lib/guides.ts`（中英各一份），新增一篇會自動出現在 `/guides/`、首頁、相關工具頁、sitemap 與 llms.txt。
+- 下一批題目建議：「CTF RSA 題型整理」、「ZIP 偽加密原理」、「音訊隱寫與頻譜圖」、「CyberChef 替代方案比較」、「SOC 告警初判流程」。
+- 教學文最適合分享到社群：照片 EXIF 與釣魚網址兩篇適合一般大眾（Dcard、Facebook），CTF 與 PNG 適合 CTF 社群，pickle 適合 AI／ML 社群（Hugging Face 論壇、r/MachineLearning）。
 - 每次新增工具就在 README 與社群更新一次，IndexNow 會自動通知搜尋引擎。
 - 在 Search Console 觀察哪些查詢有曝光但點擊率低，優化那些頁面的標題與描述。
 

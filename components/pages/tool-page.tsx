@@ -8,6 +8,7 @@ import { ToolWorkbench } from "@/components/tool-workbench";
 import { localizeTool, localizedRelated } from "@/lib/content";
 import { htmlLang, languageAlternates, localePath, ogLocale, type Locale } from "@/lib/i18n";
 import { absoluteUrl, jsonLd, siteName } from "@/lib/site";
+import { guidesForTool } from "@/lib/guides";
 import { findTool } from "@/lib/tool-catalog";
 import { format, ui } from "@/lib/ui";
 
@@ -134,6 +135,20 @@ export function ToolPage({ slug, locale }: { slug: string; locale: Locale }) {
             {faqs.map((faq) => <details key={faq.question}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}
           </div>
         </section>
+        {guidesForTool(tool.slug).length > 0 && (
+          <section className="container related-tools tool-guides-links" aria-labelledby="tool-guides">
+            <div className="section-heading"><div><span className="section-kicker">LEARN MORE</span><h2 id="tool-guides">{strings.guidesForTool}</h2></div></div>
+            <div className="related-grid">
+              {guidesForTool(tool.slug).map((item) => (
+                <Link key={item.slug} href={localePath(locale, `/guides/${item.slug}/`)}>
+                  <span aria-hidden="true">{item.icon}</span>
+                  <div><strong>{item[locale].title}</strong></div>
+                  <b aria-hidden="true">→</b>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
         <section className="container tool-notes">
           <div><span className="section-kicker">SECURITY NOTE</span><h2>{strings.securityTitle}</h2></div>
           <p>{strings.securityBody}</p>

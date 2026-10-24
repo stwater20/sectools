@@ -6,7 +6,9 @@ import { localizedCategories, localizedTools } from "@/lib/content";
 import { htmlLang, languageAlternates, localePath, ogLocale, type Locale } from "@/lib/i18n";
 import { toSummary } from "@/lib/search";
 import { absoluteUrl, jsonLd, siteName, siteUrl } from "@/lib/site";
+import { guides } from "@/lib/guides";
 import { toolCatalog } from "@/lib/tool-catalog";
+import { ui } from "@/lib/ui";
 
 const count = toolCatalog.length;
 
@@ -188,6 +190,22 @@ export function HomePage({ locale }: { locale: Locale }) {
                 );
               })}
             </div>
+          </div>
+        </section>
+
+        <section className="container related-tools home-guides" aria-labelledby="home-guides-title">
+          <div className="section-heading">
+            <div><span className="section-kicker">GUIDES</span><h2 id="home-guides-title">{ui[locale].guidesTitle}</h2></div>
+            <Link className="text-link" href={localePath(locale, "/guides/")}>{ui[locale].guideAll}</Link>
+          </div>
+          <div className="related-grid">
+            {guides.slice(0, 6).map((guide) => (
+              <Link key={guide.slug} href={localePath(locale, `/guides/${guide.slug}/`)}>
+                <span aria-hidden="true">{guide.icon}</span>
+                <div><strong>{guide[locale].title}</strong></div>
+                <b aria-hidden="true">→</b>
+              </Link>
+            ))}
           </div>
         </section>
 

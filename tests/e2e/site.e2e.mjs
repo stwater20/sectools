@@ -7,6 +7,7 @@ import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { guides } from "../../lib/guides.ts";
 import { toolCatalog } from "../../lib/tool-catalog.ts";
 import { translate } from "../../lib/translate.ts";
 import { encodeWav, synthesizeDtmf } from "../../lib/media-utils.ts";
@@ -273,10 +274,25 @@ await check("legacy /tools/ URLs redirect", async () => {
   await page.goto(`${B}/tools/hash-generator/`);
   await page.waitForURL(`${B}/hash-generator/`);
 });
+await check("guides index, articles and tool cross-links", async () => {
+  for (const [prefix, locale] of [["", "zh"], ["/en", "en"]]) {
+    await page.goto(`${B}${prefix}/guides/`, { waitUntil: "networkidle" });
+    assert.equal(await page.locator(".guide-list li").count(), guides.length);
+    for (const guide of guides) {
+      await page.goto(`${B}${prefix}/guides/${guide.slug}/`, { waitUntil: "load" });
+      assert.equal(await page.locator("h1").innerText(), guide[locale].title);
+      const links = await page.locator(".guide-tools a").evaluateAll((items) => items.map((item) => item.getAttribute("href")));
+      assert.ok(links.length > 0 && links.every((href) => href.startsWith(`${prefix}/`)), `${guide.slug} tool links ${links}`);
+      if (locale === "en") assert.ok(!cjk.test(await page.locator("main").innerText()), `${guide.slug} has Chinese text on the English page`);
+    }
+    await page.goto(`${B}${prefix}/exif-viewer/`, { waitUntil: "load" });
+    await page.locator(`.tool-guides-links a[href="${prefix}/guides/photo-exif-location/"]`).waitFor();
+  }
+});
 await ctx.close();
 
 // --- No horizontal overflow or runtime errors on any page ---
-const basePages = ["/", "/about/", ...readdirSync(join(outDir, "categories")).map((slug) => `/categories/${slug}/`), ...toolCatalog.map((tool) => `/${tool.slug}/`)];
+const basePages = ["/", "/about/", ...readdirSync(join(outDir, "categories")).map((slug) => `/categories/${slug}/`), ...toolCatalog.map((tool) => `/${tool.slug}/`), "/guides/", ...guides.map((guide) => `/guides/${guide.slug}/`)];
 const pages = [...basePages, ...basePages.map((path) => `/en${path}`)];
 for (const [width, scheme] of [[320, "light"], [390, "dark"], [768, "light"], [1280, "light"]]) {
   await check(`layout ${width}px ${scheme} (${pages.length} pages)`, async () => {

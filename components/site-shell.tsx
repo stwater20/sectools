@@ -35,6 +35,7 @@ export function SiteHeader({ compact = false, locale = "zh", path = "/" }: { com
           <nav aria-label={locale === "zh" ? "主要導覽" : "Main"}>
             <Link href={`${localePath(locale, "/")}#tools`}>{strings.navTools}</Link>
             <Link href={`${localePath(locale, "/")}#categories`}>{strings.navCategories}</Link>
+            <Link href={localePath(locale, "/guides/")}>{strings.navGuides}</Link>
             <Link href={localePath(locale, "/about/")}>{strings.navAbout}</Link>
           </nav>
           <div className="site-header__actions">
@@ -58,6 +59,7 @@ export function SiteFooter({ locale = "zh" }: { locale?: Locale }) {
           <Brand locale={locale} />
           <p>{format(strings.footerIntro, tools.length)}</p>
           <Link className="site-footer__about" href={localePath(locale, "/about/")}>{strings.footerAbout}</Link>
+          <Link className="site-footer__about" href={localePath(locale, "/guides/")}>{strings.guideAll}</Link>
         </div>
         <nav className="site-footer__nav" aria-label={strings.footerNav}>
           {localizedCategories(locale).map((category) => (
