@@ -177,3 +177,10 @@ test("every tool and guide has its own share image in both languages", async () 
   const missing = files.filter((file) => !existsSync(new URL(`../public/${file}`, import.meta.url)));
   assert.deepEqual(missing, [], "run `FONT_DIR=… node scripts/og-images.mjs` to render missing share images");
 });
+
+test("the tool site's structured-data names stay distinct from the parent site sectools.tw", async () => {
+  const home = await readFile(new URL("../components/pages/home-page.tsx", import.meta.url), "utf8");
+  const alternate = home.match(/alternateName: (.+),\n/)[1];
+  assert.doesNotMatch(alternate, /"SecTools(?:\.tw)?"/);
+  assert.match(alternate, /"資安工具箱"/);
+});

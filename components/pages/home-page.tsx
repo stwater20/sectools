@@ -5,7 +5,7 @@ import { SiteFooter, SiteHeader } from "@/components/site-shell";
 import { localizedCategories, localizedTools } from "@/lib/content";
 import { htmlLang, languageAlternates, localePath, ogLocale, type Locale } from "@/lib/i18n";
 import { toSummary } from "@/lib/search";
-import { absoluteUrl, jsonLd, siteName, siteUrl } from "@/lib/site";
+import { absoluteUrl, jsonLd, siteName } from "@/lib/site";
 import { guides } from "@/lib/guides";
 import { toolCatalog } from "@/lib/tool-catalog";
 import { ui } from "@/lib/ui";
@@ -117,14 +117,15 @@ export function HomePage({ locale }: { locale: Locale }) {
       "@type": "WebSite",
       "@id": `${home}#website`,
       name: locale === "en" ? "SecTools Security Toolkit" : siteName,
-      alternateName: ["SecTools", "SecTools.tw", locale === "en" ? "SecTools 資安工具箱" : "SecTools Security Toolkit"],
+      // Keep this site's names distinct from the parent site sectools.tw, so search engines don't merge the two.
+      alternateName: locale === "en" ? ["SecTools Online Security Tools", "SecTools 資安工具箱"] : ["資安工具箱", "SecTools 線上資安工具箱", "SecTools Security Toolkit"],
       url: home,
       inLanguage: htmlLang[locale],
       description: text.siteDescription,
-      publisher: { "@id": `${siteUrl}/#organization` },
+      publisher: { "@id": "https://sectools.tw/#organization" },
       potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: `${home}?q={search_term_string}` }, "query-input": "required name=search_term_string" },
     },
-    { "@context": "https://schema.org", "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "SecTools.tw", url: "https://sectools.tw/", logo: absoluteUrl("/icon-512.png"), sameAs: ["https://github.com/stwater20/sectools"] },
+    { "@context": "https://schema.org", "@type": "Organization", "@id": "https://sectools.tw/#organization", name: "SecTools.tw", url: "https://sectools.tw/", logo: absoluteUrl("/icon-512.png"), sameAs: ["https://github.com/stwater20/sectools"] },
     {
       "@context": "https://schema.org", "@type": "ItemList", name: text.listName, numberOfItems: tools.length,
       itemListElement: tools.map((tool, index) => ({ "@type": "ListItem", position: index + 1, name: tool.name, url: absoluteUrl(localePath(locale, `/${tool.slug}/`)) })),
