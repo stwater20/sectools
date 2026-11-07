@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { HandoffReceiver } from "@/components/handoff-receiver";
 import { LocaleProvider } from "@/components/locale";
 import { SiteFooter, SiteHeader } from "@/components/site-shell";
 import { ToolActions } from "@/components/tool-actions";
@@ -112,7 +113,7 @@ export function ToolPage({ slug, locale }: { slug: string; locale: Locale }) {
         </section>
         <section className="container workbench-wrap" aria-label={format(strings.workbenchLabel, tool.name)}>
           <div className="workbench-header"><span>WORKBENCH</span><p>{strings.workbenchMeta}</p></div>
-          <div className="workbench"><LocaleProvider locale={locale}><ToolWorkbench slug={tool.slug} /></LocaleProvider></div>
+          <div className="workbench"><LocaleProvider locale={locale}><HandoffReceiver slug={tool.slug} /><ToolWorkbench slug={tool.slug} /></LocaleProvider></div>
         </section>
         <section className="container tool-guide">
           <div className="tool-guide__grid">

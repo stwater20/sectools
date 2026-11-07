@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { markRecent, toggleFavorite, useFavorites, useRecent } from "@/lib/local-prefs";
 import { localePath, type Locale } from "@/lib/i18n";
 import { searchTools, type ToolSummary } from "@/lib/search";
+import { SmartPaste } from "@/components/smart-paste";
+import { detectInput, noPrefill } from "@/lib/detect";
+import { setHandoff } from "@/lib/handoff";
 
 const popularSlugs = ["jwt-decoder", "hash-generator", "cidr-calculator", "cvss-calculator", "base64-codec", "ioc-extractor"];
 const allLabel = "__all";
@@ -16,8 +20,7 @@ const homeStrings = {
     popular: "熱門", newBadge: "NEW", hot: "熱門", unfavorite: "從收藏移除 {0}", addFavorite: "收藏 {0}", open: "開啟工具",
     badge: "{0} 個工具・100% 本機運算", h1a: "免費線上", h1b: "資安工具箱", subtitle: "{0} 個工具，資料只在你的瀏覽器裡運算。",
     lead: "JWT 解碼、Hash 計算、CIDR 換算、CVSS 評分、IOC 擷取⋯⋯資安工程師、SOC 分析師與 CTF 玩家天天用到的工具，不用註冊、沒有廣告，打開就能用。",
-    searchLabel: "搜尋資安工具", searchPlaceholder: "搜尋工具，例如 JWT、雜湊、CIDR…", local: "本機處理", mostUsed: "大家最常開的工具",
-    mockOk: "✓ 格式正確", mockWarn: "! 未設定 exp 到期時間", mockRequests: "0 個網路請求",
+    openWith: "用{0}開啟", searchLabel: "搜尋資安工具", searchPlaceholder: "搜尋工具，例如 JWT、雜湊、CIDR…", local: "本機處理", mostUsed: "大家最常開的工具",
     statTools: "免費工具", statBytes: "伺服器收到的資料", statSignup: "註冊與登入", statSignupValue: "免", statCategories: "工具分類",
     toolsKicker: "TOOLS", toolsTitle: "全部工具", toolsHintA: "按 ☆ 把常用工具加入收藏；在任何頁面按", toolsHintB: "都能直接搜尋。",
     filterLabel: "工具分類篩選", all: "全部", favorites: "★ 收藏", recent: "最近使用", count: "個工具", matching: "符合「{0}」", clear: "清除篩選 ×",
@@ -29,8 +32,7 @@ const homeStrings = {
     popular: "Popular", newBadge: "NEW", hot: "POPULAR", unfavorite: "Remove {0} from favorites", addFavorite: "Add {0} to favorites", open: "Open tool",
     badge: "{0} tools · 100% in your browser", h1a: "Free online", h1b: "security toolkit", subtitle: "{0} tools. Your data never leaves your browser.",
     lead: "JWT decoding, hashing, CIDR math, CVSS scoring, IOC extraction and CTF solvers — the tools security engineers, SOC analysts and CTF players reach for every day. No sign-up, no ads, ready when you are.",
-    searchLabel: "Search security tools", searchPlaceholder: "Search tools, e.g. JWT, hash, CIDR…", local: "Runs locally", mostUsed: "Most-used tools",
-    mockOk: "✓ Well-formed", mockWarn: "! No exp claim", mockRequests: "0 network requests",
+    openWith: "Open in {0}", searchLabel: "Search security tools", searchPlaceholder: "Search tools, e.g. JWT, hash, CIDR…", local: "Runs locally", mostUsed: "Most-used tools",
     statTools: "Free tools", statBytes: "Data sent to servers", statSignup: "Sign-up", statSignupValue: "None", statCategories: "Categories",
     toolsKicker: "TOOLS", toolsTitle: "All tools", toolsHintA: "Star ☆ the tools you use most. Press", toolsHintB: "on any page to search.",
     filterLabel: "Filter by category", all: "All", favorites: "★ Favorites", recent: "Recent", count: "tools", matching: "matching “{0}”", clear: "Clear filters ×",
@@ -120,6 +122,20 @@ export function HomeClient({ tools, categories, locale }: { tools: ToolSummary[]
     return searchTools(inCategory, query);
   }, [tools, query, category, favorites]);
 
+  // People often paste data into the search box; when it isn't a tool name, offer the tool that fits the data.
+  const router = useRouter();
+  const detected = useMemo(() => {
+    if (query.trim().length < 6 || visibleTools.length > 0) return null;
+    const [best] = detectInput(query, 1);
+    return best && best.score >= 85 ? best : null;
+  }, [query, visibleTools.length]);
+  function openDetected() {
+    if (!detected) return;
+    if (!noPrefill.has(detected.slug)) setHandoff({ slug: detected.slug, text: query.trim(), action: detected.action });
+    markRecent(detected.slug);
+    router.push(localePath(locale, `/${detected.slug}/`));
+  }
+
   const recentTools = recent.map((slug) => tools.find((tool) => tool.slug === slug)).filter((tool): tool is ToolSummary => Boolean(tool)).slice(0, 4);
 
   function runQuickSearch(value: string) {
@@ -130,6 +146,7 @@ export function HomeClient({ tools, categories, locale }: { tools: ToolSummary[]
 
   function onSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") setQuery("");
+    if (event.key === "Enter" && detected) { event.preventDefault(); openDetected(); return; }
     if (event.key === "Enter" && visibleTools.length > 0 && query.trim()) {
       libraryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -164,6 +181,12 @@ export function HomeClient({ tools, categories, locale }: { tools: ToolSummary[]
             />
             <kbd aria-hidden="true">/</kbd>
           </div>
+          {detected && (
+            <button type="button" className="search-detected" onClick={openDetected}>
+              <span>{detected.reason[locale]}</span>
+              <strong>{fill(strings.openWith, tools.find((tool) => tool.slug === detected.slug)?.name ?? detected.slug)} →</strong>
+            </button>
+          )}
           <div className="quick-searches">
             <span>{strings.popular}</span>
             {strings.quickSearches.map((item) => <button key={item} type="button" onClick={() => runQuickSearch(item)}>{item}</button>)}
@@ -174,7 +197,7 @@ export function HomeClient({ tools, categories, locale }: { tools: ToolSummary[]
           <div className="app-window">
             <div className="app-window__bar">
               <span className="app-window__dots" aria-hidden="true"><i /><i /><i /></span>
-              <span className="app-window__url" aria-hidden="true"><svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /></svg>tools.sectools.tw/jwt-decoder</span>
+              <span className="app-window__url" aria-hidden="true"><svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /></svg>tools.sectools.tw</span>
               <span className="app-window__badge" aria-hidden="true"><i className="pulse-dot" />{strings.local}</span>
             </div>
             <div className="app-window__body">
@@ -191,26 +214,8 @@ export function HomeClient({ tools, categories, locale }: { tools: ToolSummary[]
                   ))}
                 </ol>
               </nav>
-              <div className="app-window__main" aria-hidden="true">
-                <div className="mock-field">
-                  <small>JWT TOKEN</small>
-                  <code><em className="t-a">eyJhbGciOiJIUzI1NiJ9</em>.<em className="t-b">eyJzdWIiOiJhbGljZSIsInJvbGUiOiJhZG1pbiJ9</em>.<em className="t-c">4pcPyMD09olPSyXnrXCjTwXyr4BsezdI1AVTmud2fU4</em></code>
-                </div>
-                <div className="mock-grid">
-                  <div className="mock-panel">
-                    <small>HEADER</small>
-                    <pre>{"{\n  "}<b>&quot;alg&quot;</b>{": "}<i>&quot;HS256&quot;</i>{"\n}"}</pre>
-                  </div>
-                  <div className="mock-panel">
-                    <small>PAYLOAD</small>
-                    <pre>{"{\n  "}<b>&quot;sub&quot;</b>{": "}<i>&quot;alice&quot;</i>{",\n  "}<b>&quot;role&quot;</b>{": "}<i>&quot;admin&quot;</i>{"\n}"}</pre>
-                  </div>
-                </div>
-                <div className="mock-status">
-                  <span className="is-ok">{strings.mockOk}</span>
-                  <span className="is-warn">{strings.mockWarn}</span>
-                  <span>{strings.mockRequests}</span>
-                </div>
+              <div className="app-window__main">
+                <SmartPaste tools={tools} locale={locale} />
               </div>
             </div>
           </div>

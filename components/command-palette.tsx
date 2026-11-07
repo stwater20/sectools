@@ -4,9 +4,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { searchTools, type ToolSummary } from "@/lib/search";
 import { useFavorites, useRecent } from "@/lib/local-prefs";
+import { detectInput, noPrefill } from "@/lib/detect";
+import { setHandoff } from "@/lib/handoff";
 import { localePath, type Locale } from "@/lib/i18n";
 
-export type PaletteStrings = { label: string; short: string; placeholder: string; recent: string; empty: string; results: string; select: string; open: string; close: string; favorited: string };
+export type PaletteStrings = { label: string; short: string; placeholder: string; recent: string; empty: string; results: string; select: string; open: string; close: string; favorited: string; openWith: string };
 
 export function CommandPalette({ tools, locale, strings }: { tools: ToolSummary[]; locale: Locale; strings: PaletteStrings }) {
   const router = useRouter();
@@ -27,6 +29,20 @@ export function CommandPalette({ tools, locale, strings }: { tools: ToolSummary[
     const rest = tools.filter((tool) => !pinned.includes(tool));
     return [...pinned, ...rest].slice(0, 12);
   }, [tools, query, recent, favorites]);
+
+  const detected = useMemo(() => {
+    if (query.trim().length < 6 || results.length > 0) return null;
+    const [best] = detectInput(query, 1);
+    const tool = best && best.score >= 85 ? tools.find((item) => item.slug === best.slug) : undefined;
+    return tool && best ? { tool, suggestion: best } : null;
+  }, [query, results.length, tools]);
+
+  function openDetected() {
+    if (!detected) return;
+    if (!noPrefill.has(detected.tool.slug)) setHandoff({ slug: detected.tool.slug, text: query.trim(), action: detected.suggestion.action });
+    dialogRef.current?.close();
+    router.push(localePath(locale, `/${detected.tool.slug}/`));
+  }
 
   const open = useCallback(() => {
     const dialog = dialogRef.current;
@@ -77,7 +93,8 @@ export function CommandPalette({ tools, locale, strings }: { tools: ToolSummary[
       setActive((index) => Math.max(index - 1, 0));
     } else if (event.key === "Enter") {
       event.preventDefault();
-      go(results[active]);
+      if (detected) openDetected();
+      else go(results[active]);
     }
   }
 
@@ -136,7 +153,13 @@ export function CommandPalette({ tools, locale, strings }: { tools: ToolSummary[
               </li>
             ))}
           </ul>
-          {results.length === 0 && <p className="palette__empty">{strings.empty.replace("{0}", query)}</p>}
+          {detected && (
+            <button type="button" className="palette__detected" onClick={openDetected}>
+              <span className="palette__icon" aria-hidden="true">{detected.tool.icon}</span>
+              <span className="palette__text"><strong>{strings.openWith.replace("{0}", detected.tool.name)}</strong><small>{detected.suggestion.reason[locale]}</small></span>
+            </button>
+          )}
+          {results.length === 0 && !detected && <p className="palette__empty">{strings.empty.replace("{0}", query)}</p>}
           <div className="palette__footer" aria-hidden="true">
             <span><kbd>↑</kbd><kbd>↓</kbd> {strings.select}</span>
             <span><kbd>Enter</kbd> {strings.open}</span>

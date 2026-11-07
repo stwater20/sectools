@@ -18,6 +18,8 @@
 - CTF：Recipe 串接解碼器（CyberChef 式）、PHP 反序列化檢視與編輯、RSA 自動求解器、Vigenère 密碼破解、古典密碼工具組（Atbash／ROT47／Affine／Rail Fence／Bacon）、字母頻率分析、摩斯密碼、JWT 偽造、Brainfuck／Ook!、QR Code 解碼、XOR Tool、Caesar Brute Force、Base/ASCII Converter、Integer Pack/Unpack、Cyclic Pattern 偏移計算（pwntools cyclic）、AES／DES／3DES／RC4 加解密、RSA Math Helper、Unicode/Escape Codec、多層編碼解碼器、Path Traversal Analyzer
 - 隱寫與鑑識：Python Pickle 安全分析（靜態反組譯）、LSB 隱寫分析（位元平面檢視）、檔案隱藏資料掃描器（binwalk-lite）、ZIP 分析（偽加密修復、ZipCrypto 字典攻擊）、PNG 寬高／CRC 修復、EXIF／GPS 中繼資料檢視、音訊頻譜圖與 DTMF 解碼、gzip／zlib 解壓縮、Base32／58／85／91 編解碼
 
+首頁的「智慧貼上」可以直接貼上 JWT、雜湊、Base64、IP、網址、郵件標頭等資料，或拖放圖片、ZIP、音檔、PCAP，會自動判斷該用哪個工具並帶入內容開啟（資料只在分頁記憶體中傳遞，不進網址也不送出）。頂部搜尋框與 Ctrl + K 也能辨識貼上的資料。
+
 每個工具都有中英文獨立靜態網址（`/<tool>/` 與 `/en/<tool>/`）、SEO metadata、hreflang、結構化資料與安全使用提醒。
 
 ## 網站功能

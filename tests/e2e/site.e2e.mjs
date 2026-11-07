@@ -274,6 +274,36 @@ await check("legacy /tools/ URLs redirect", async () => {
   await page.goto(`${B}/tools/hash-generator/`);
   await page.waitForURL(`${B}/hash-generator/`);
 });
+await check("smart paste routes pasted data and files to the right tool, prefilled", async () => {
+  await page.goto(B, { waitUntil: "networkidle" });
+  await page.locator(".smart-paste__examples button", { hasText: "JWT" }).click();
+  await page.locator(".smart-paste__results button.is-best", { hasText: "JWT 解碼器" }).click();
+  await page.waitForURL(/\/jwt-decoder\/$/);
+  await page.locator(".handoff-notice").waitFor();
+  await page.locator(".workbench", { hasText: "alice" }).waitFor();
+  await page.goto(B, { waitUntil: "networkidle" });
+  await page.locator(".smart-paste input[type=file]").setInputFiles({ name: "short.png", mimeType: "image/png", buffer: await readFile(new URL("./fixtures/short-height.png", import.meta.url)) });
+  await page.locator(".smart-paste__results button.is-best", { hasText: "PNG" }).click();
+  await page.waitForURL(/\/png-crc-fixer\/$/);
+  await page.locator(".workbench", { hasText: "120 × 60" }).waitFor();
+});
+await check("hero search and Ctrl+K open the matching tool for pasted data", async () => {
+  await page.goto(`${B}/en/`, { waitUntil: "networkidle" });
+  await page.fill("#tool-search", "ZmxhZ3tiYXNlNjRfaXNfbm90X2VuY3J5cHRpb259");
+  await page.locator(".search-detected").click();
+  await page.waitForURL(/\/en\/base64-codec\/$/);
+  await page.locator(".workbench").getByText("flag{base64_is_not_encryption}").first().waitFor().catch(async () => {
+    const values = await page.locator(".workbench textarea").evaluateAll((items) => items.map((item) => item.value).join("|"));
+    if (!values.includes("flag{base64_is_not_encryption}")) throw new Error(`base64 not decoded: ${values}`);
+  });
+  await page.keyboard.press("Control+k");
+  await page.locator("dialog.palette[open]").waitFor();
+  await page.keyboard.type("10.0.0.0/8");
+  await page.locator(".palette__detected").waitFor();
+  await page.keyboard.press("Enter");
+  await page.waitForURL(/\/en\/cidr-calculator\/$/);
+  await page.locator(".workbench", { hasText: "10.255.255.255" }).waitFor();
+});
 await check("guides index, articles and tool cross-links", async () => {
   for (const [prefix, locale] of [["", "zh"], ["/en", "en"]]) {
     await page.goto(`${B}${prefix}/guides/`, { waitUntil: "networkidle" });

@@ -39,7 +39,7 @@ export function SiteHeader({ compact = false, locale = "zh", path = "/" }: { com
             <Link href={localePath(locale, "/about/")}>{strings.navAbout}</Link>
           </nav>
           <div className="site-header__actions">
-            <CommandPalette tools={tools} locale={locale} strings={{ label: strings.searchLabel, short: strings.searchShort, placeholder: strings.searchPlaceholder, recent: strings.searchRecent, empty: strings.searchEmpty, results: strings.searchResults, select: strings.searchSelect, open: strings.searchOpen, close: strings.searchClose, favorited: strings.favorited }} />
+            <CommandPalette tools={tools} locale={locale} strings={{ label: strings.searchLabel, short: strings.searchShort, placeholder: strings.searchPlaceholder, recent: strings.searchRecent, empty: strings.searchEmpty, results: strings.searchResults, select: strings.searchSelect, open: strings.searchOpen, close: strings.searchClose, favorited: strings.favorited, openWith: strings.searchOpenWith }} />
             <a className="lang-switch" href={localePath(other, path)} hrefLang={other === "en" ? "en" : "zh-Hant-TW"} lang={other === "en" ? "en" : "zh-Hant-TW"} aria-label={strings.switchLanguageLabel}>{strings.switchLanguage}</a>
             <ThemeToggle label={strings.themeToggle} />
           </div>

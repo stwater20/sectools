@@ -4,6 +4,7 @@
 export const enDictionary: Record<string, string> = {
   // Symmetric ciphers, cyclic patterns, compression and ZIP
   "模式": "Mode",
+  "計算雜湊": "Calculate hash",
   "文字（UTF-8）": "Text (UTF-8)",
   "16／24／32 bytes": "16/24/32 bytes",
   "16 或 24 bytes": "16 or 24 bytes",
